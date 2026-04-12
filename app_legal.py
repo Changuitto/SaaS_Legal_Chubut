@@ -7,7 +7,6 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
 # 1. CONFIGURACIÓN PREMIUM CON TU LOGO
-# Ahora el icono de la pestaña del navegador también será tu logo
 st.set_page_config(
     page_title="Chubut.IA - Legal", 
     page_icon="logo.png", 
@@ -69,24 +68,27 @@ if "sesion_actual" not in st.session_state:
     st.session_state.sesion_actual = "Nueva Consulta"
 
 # ==========================================
-# PANTALLA DE LOGIN CON LOGO
+# PANTALLA DE LOGIN MEJORADA
 # ==========================================
 if not st.session_state.usuario_autenticado:
-    col1, col2, col3 = st.columns([1, 1, 1])
+    # Le damos más ancho a la columna central (el 1.5) para que el logo respire
+    col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.write("<br><br>", unsafe_allow_html=True)
-        # ACÁ USAMOS TU NUEVO LOGO
+        
+        # LOGO GRANDE Y ADAPTATIVO
         if os.path.exists("logo.png"):
-            st.image("logo.png", width=200)
+            st.image("logo.png", use_container_width=True)
         else:
-            st.title("Chubut.IA")
+            st.markdown("<h1 style='text-align: center;'>Chubut.IA</h1>", unsafe_allow_html=True)
             
-        st.markdown("🔒 **Sistema de Jurisprudencia**")
+        st.markdown("<div style='text-align: center; font-size: 1.2rem;'>🔒 <b>Sistema de Jurisprudencia</b></div>", unsafe_allow_html=True)
         st.divider()
         
         usuario_input = st.text_input("Usuario")
         password_input = st.text_input("Contraseña", type="password") 
         
+        st.write("") # Espaciador
         if st.button("Ingresar", type="primary", use_container_width=True):
             if usuario_input in CLIENTES_AUTORIZADOS and CLIENTES_AUTORIZADOS[usuario_input] == password_input:
                 st.session_state.usuario_autenticado = True
@@ -99,9 +101,8 @@ if not st.session_state.usuario_autenticado:
 # ==========================================
 else:
     with st.sidebar:
-        # LOGO TAMBIÉN EN LA BARRA LATERAL
         if os.path.exists("logo.png"):
-            st.image("logo.png", width=150)
+            st.image("logo.png", use_container_width=True)
         else:
             st.header("Chubut.IA")
             
