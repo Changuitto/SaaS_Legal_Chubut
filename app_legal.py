@@ -20,7 +20,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 2. TU LLAVE DE ACCESO
-os.environ["OPENAI_API_KEY"] = "" 
+
 
 # BASE DE DATOS DE CLIENTES
 CLIENTES_AUTORIZADOS = {
