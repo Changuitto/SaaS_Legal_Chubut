@@ -25,7 +25,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. CONEXIONES A LOS SECRETOS (OPENAI + SUPABASE)
+# 2. CONEXIONES (OPENAI + SUPABASE)
 try:
     os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
     url: str = st.secrets["SUPABASE_URL"]
@@ -36,13 +36,12 @@ except Exception as e:
     st.stop()
 
 # 3. CONTROL DE SESIÓN MULTI-CHAT
-if "usuario_autenticado" not in st.session_state: st.session_state.usuario_autenticado = False
 if "user_data" not in st.session_state: st.session_state.user_data = None
 if "sesiones_chat" not in st.session_state: st.session_state.sesiones_chat = {"Nueva Consulta": []}
 if "sesion_actual" not in st.session_state: st.session_state.sesion_actual = "Nueva Consulta"
 
 # ==========================================
-# PANTALLA DE LOGIN / REGISTRO
+# PANTALLA DE LOGIN / REGISTRO PROFESIONAL
 # ==========================================
 if st.session_state.user_data is None:
     col1, col2, col3 = st.columns([1, 1.5, 1])
@@ -61,38 +60,47 @@ if st.session_state.user_data is None:
         tab_login, tab_registro = st.tabs(["Iniciar Sesión", "Crear Cuenta"])
         
         with tab_login:
-            u_login = st.text_input("Usuario", key="u_log")
+            # Ahora iniciamos sesión con el email para mayor seguridad
+            e_login = st.text_input("Correo Electrónico", key="e_log")
             p_login = st.text_input("Contraseña", type="password", key="p_log")
             if st.button("Ingresar", type="primary", use_container_width=True):
-                res = supabase.table("usuarios").select("*").eq("usuario", u_login).eq("password", p_login).execute()
+                res = supabase.table("usuarios").select("*").eq("email", e_login).eq("password", p_login).execute()
                 if len(res.data) > 0:
                     st.session_state.user_data = res.data[0]
                     st.rerun()
                 else:
-                    st.error("Usuario o contraseña incorrectos.")
+                    st.error("Correo o contraseña incorrectos.")
                     
         with tab_registro:
-            u_reg = st.text_input("Elegí un Usuario", key="u_reg")
+            u_reg = st.text_input("Nombre de Usuario o Estudio", key="u_reg")
+            # Agregamos el campo obligatorio de email
+            e_reg = st.text_input("Correo Electrónico (Obligatorio)", key="e_reg")
             p_reg = st.text_input("Elegí una Contraseña", type="password", key="p_reg")
+            
             if st.button("Registrarme y empezar prueba", use_container_width=True):
-                existe = supabase.table("usuarios").select("*").eq("usuario", u_reg).execute()
-                if len(existe.data) > 0:
-                    st.warning("Ese nombre de usuario ya está ocupado.")
+                if not e_reg or "@" not in e_reg:
+                    st.error("Por favor, ingresá un correo electrónico válido.")
+                elif not u_reg or not p_reg:
+                    st.error("Por favor, completá todos los campos.")
                 else:
-                    nuevo = {"usuario": u_reg, "password": p_reg, "consultas": 3}
-                    supabase.table("usuarios").insert(nuevo).execute()
-                    st.success("¡Cuenta creada! Ya podés iniciar sesión en la pestaña de al lado.")
+                    # Verificamos si el correo ya existe
+                    existe_email = supabase.table("usuarios").select("*").eq("email", e_reg).execute()
+                    if len(existe_email.data) > 0:
+                        st.warning("Ese correo electrónico ya está registrado. Por favor, iniciá sesión.")
+                    else:
+                        # Si todo está bien, lo creamos
+                        nuevo = {"usuario": u_reg, "email": e_reg, "password": p_reg, "consultas": 3}
+                        supabase.table("usuarios").insert(nuevo).execute()
+                        st.success("¡Cuenta creada! Ya podés iniciar sesión en la pestaña de al lado.")
 
 # ==========================================
 # APLICACIÓN PRINCIPAL (EL CHAT)
 # ==========================================
 else:
-    # 1. Leer Créditos Actualizados
     user = st.session_state.user_data
     db_user = supabase.table("usuarios").select("*").eq("id", user["id"]).execute().data[0]
     creditos = db_user["consultas"]
 
-    # 2. Conectar la Bóveda de Fallos (Chroma)
     @st.cache_resource
     def conectar_boveda():
         directorio_db = "MI_BASE_VECTORIAL"
@@ -110,7 +118,6 @@ else:
         st.error(f"Error de conexión con la bóveda: {e}")
         st.stop()
 
-    # --- BARRA LATERAL ---
     with st.sidebar:
         if os.path.exists("logo.png"):
             st.image("logo.png", use_container_width=True)
@@ -118,16 +125,16 @@ else:
             st.header("Chubut.IA")
         
         st.divider()
-        st.markdown(f"👤 **Usuario:** {user['usuario']}")
+        st.markdown(f"👤 **{user['usuario']}**")
+        st.caption(f"📧 {user['email']}") # Mostramos el correo chiquito
         
-        # EL PAYWALL
         if creditos > 0:
             st.success(f"🎁 Te quedan **{creditos}** consultas gratis")
         else:
             st.error("🚫 Sin consultas disponibles")
             st.markdown("### 💎 Pasate a Pro")
             st.write("Seguí usando Chubut.IA de forma ilimitada por solo **6,99 USD/mes**.")
-            st.button("Pagar Suscripción (Stripe)", type="primary", use_container_width=True)
+            st.button("Pagar Suscripción", type="primary", use_container_width=True)
             
         st.divider()
         
@@ -151,7 +158,6 @@ else:
             st.session_state.user_data = None
             st.rerun()
 
-    # --- LÓGICA DEL CHAT Y LA IA ---
     historial_activo = st.session_state.sesiones_chat[st.session_state.sesion_actual]
 
     if len(historial_activo) == 0:
@@ -163,33 +169,25 @@ else:
             with st.chat_message(mensaje["role"]):
                 st.markdown(mensaje["content"])
 
-    # INPUT DEL USUARIO
     if pregunta := st.chat_input("Escribe tu consulta aquí..."):
-        
-        # 1. VERIFICAR CRÉDITOS ANTES DE DEJARLO PREGUNTAR
         if creditos <= 0:
             st.warning("Has agotado tus consultas gratuitas. Por favor, adquiere el plan Pro en la barra lateral para continuar.")
             st.stop()
             
-        # 2. SISTEMA DE AUTOTÍTULO
         if len(historial_activo) == 0:
             nuevo_titulo = pregunta[:25].capitalize() + "..."
             st.session_state.sesiones_chat[nuevo_titulo] = st.session_state.sesiones_chat.pop(st.session_state.sesion_actual)
             st.session_state.sesion_actual = nuevo_titulo
 
-        # 3. GUARDAR Y RECARGAR
         st.session_state.sesiones_chat[st.session_state.sesion_actual].append({"role": "user", "content": pregunta})
         st.rerun() 
 
-    # RESPUESTA DE LA IA
     historial_actualizado = st.session_state.sesiones_chat[st.session_state.sesion_actual]
     if len(historial_actualizado) > 0 and historial_actualizado[-1]["role"] == "user":
         pregunta_actual = historial_actualizado[-1]["content"]
         
         with st.chat_message("assistant"):
             with st.spinner("Buscando fallos en Chubut.IA..."):
-                
-                # --- MAGIA DE LA IA ---
                 documentos_relevantes = vectordb.similarity_search(pregunta_actual, k=5)
                 contexto_legal = "\n\n".join([doc.page_content for doc in documentos_relevantes])
                 instruccion_sistema = f"Sos Chubut.IA. Contexto: {contexto_legal}. Formato: 📌 Carátula, 📅 Fecha, 📝 Cita, ⚖️ Resolución, 🔗 Link."
@@ -206,7 +204,6 @@ else:
                     respuesta_generada = st.write_stream(extraer_texto(llm.stream(mensajes_llm)))
                     st.session_state.sesiones_chat[st.session_state.sesion_actual].append({"role": "assistant", "content": respuesta_generada})
                     
-                    # --- MAGIA DE COBRO (DESCONTAR 1 CRÉDITO) ---
                     nueva_cantidad = creditos - 1
                     supabase.table("usuarios").update({"consultas": nueva_cantidad}).eq("id", user["id"]).execute()
                     
