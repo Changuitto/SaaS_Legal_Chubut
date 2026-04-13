@@ -75,7 +75,7 @@ def pantalla_acceso():
                     except Exception as e: st.error(f"Error: {e}")
 
 # ==========================================
-# PANTALLA DE CHAT (CON PERSISTENCIA)
+# PANTALLA DE CHAT (CON PERSISTENCIA Y TÍTULOS INTELIGENTES)
 # ==========================================
 def pantalla_chat():
     user = st.session_state.user_data
@@ -99,14 +99,12 @@ def pantalla_chat():
         # Usuario existente
         creditos = db_res.data[0]["consultas"]
         historial_db = db_res.data[0].get("historial")
-        # Si la columna historial está vacía (NULL), le creamos una estructura base
         if not historial_db:
             historial_db = {"Consulta 1": []}
 
     # Sincronizar Base de Datos con Streamlit (Solo 1 vez al entrar)
     if "chat_iniciado" not in st.session_state:
         st.session_state.sesiones_chat = historial_db
-        # Seleccionar la última consulta como activa
         st.session_state.sesion_actual = list(historial_db.keys())[-1] if historial_db else "Consulta 1"
         st.session_state.chat_iniciado = True
 
@@ -122,22 +120,19 @@ def pantalla_chat():
         
         # Botón para Nueva Consulta
         if st.button("➕ Nueva Consulta", type="primary", use_container_width=True):
-            # Generar nombre único para la consulta
             num_consulta = len(st.session_state.sesiones_chat) + 1
             nueva_id = f"Consulta {num_consulta}"
             
-            # Actualizar memoria
             st.session_state.sesiones_chat[nueva_id] = []
             st.session_state.sesion_actual = nueva_id
             
-            # GUARDAR EN SUPABASE INMEDIATAMENTE
+            # Guardar en base de datos
             supabase.table("usuarios").update({"historial": st.session_state.sesiones_chat}).eq("email", user.email).execute()
             st.rerun()
 
         # Generar lista de botones del Historial
-        st.write("") # Espacio
+        st.write("")
         for nombre_chat in list(st.session_state.sesiones_chat.keys()):
-            # Marcador visual para el chat seleccionado
             prefijo = "🟢" if nombre_chat == st.session_state.sesion_actual else "📄"
             if st.button(f"{prefijo} {nombre_chat}", key=f"btn_{nombre_chat}", use_container_width=True):
                 st.session_state.sesion_actual = nombre_chat
@@ -147,8 +142,7 @@ def pantalla_chat():
         if st.button("Cerrar Sesión", use_container_width=True):
             supabase.auth.sign_out()
             st.session_state.user_data = None
-            if "chat_iniciado" in st.session_state:
-                del st.session_state["chat_iniciado"]
+            if "chat_iniciado" in st.session_state: del st.session_state["chat_iniciado"]
             st.rerun()
 
     # --- CUERPO DEL CHAT ---
@@ -193,8 +187,30 @@ def pantalla_chat():
                     st.markdown(res.content)
                     historial_actual.append({"role": "assistant", "content": res.content})
                     
-                    # ACTUALIZAR SUPABASE CON EL NUEVO MENSAJE Y DESCONTAR CRÉDITO
+                    # --- LÓGICA DE TÍTULOS INTELIGENTES ---
+                    sesion_vieja = st.session_state.sesion_actual
+                    # Si es el primer mensaje y tiene el nombre por defecto
+                    if sesion_vieja.startswith("Consulta ") and len(historial_actual) == 2:
+                        try:
+                            # Le pedimos a la IA un título ultra corto
+                            prompt_titulo = f"Resume esta intención de búsqueda en un título legal de máximo 4 palabras (solo el título, sin comillas): {prompt}"
+                            nuevo_titulo = llm.invoke([HumanMessage(content=prompt_titulo)]).content.replace('"', '').strip()
+                            
+                            # Evitar que se pisen nombres si justo da el mismo título
+                            if nuevo_titulo in st.session_state.sesiones_chat:
+                                nuevo_titulo += f" {len(st.session_state.sesiones_chat)}"
+                            
+                            # Renombrar en el diccionario
+                            st.session_state.sesiones_chat[nuevo_titulo] = st.session_state.sesiones_chat.pop(sesion_vieja)
+                            st.session_state.sesion_actual = nuevo_titulo
+                        except:
+                            pass # Si hay algún error, simplemente mantiene el nombre "Consulta X"
+                    # ----------------------------------------
+                    
+                    # Guardar la sesión activa bajo su nombre (ya sea el nuevo título o el anterior)
                     st.session_state.sesiones_chat[st.session_state.sesion_actual] = historial_actual
+                    
+                    # ACTUALIZAR SUPABASE CON EL NUEVO MENSAJE/TÍTULO Y DESCONTAR CRÉDITO
                     supabase.table("usuarios").update({
                         "consultas": creditos - 1,
                         "historial": st.session_state.sesiones_chat
