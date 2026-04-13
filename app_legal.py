@@ -8,23 +8,28 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 # 1. CONFIGURACIÓN DE PÁGINA
 st.set_page_config(page_title="Chubut.IA - Legal", page_icon="logo.png", layout="wide")
 
-# --- CSS PROFESIONAL ---
+# --- CSS PROFESIONAL MEJORADO ---
 st.markdown("""
     <style>
         footer {visibility: hidden;}
-        /* Estilos para el botón de chat en la barra lateral */
+        
+        /* Estilos para los botones de la barra lateral (AHORA TRANSPARENTES Y ELEGANTES) */
         [data-testid="stSidebar"] .stButton>button { 
             width: 100%; 
-            border-radius: 10px; 
+            border-radius: 8px; 
             text-align: left; 
-            padding-left: 15px; 
-            background-color: #f0f2f6;
-            color: #31333F;
+            padding-left: 10px; 
+            background-color: transparent; /* Quita el recuadro blanco */
+            border: 1px solid rgba(128, 128, 128, 0.3); /* Borde sutil */
+            color: inherit;
+            transition: all 0.2s ease-in-out;
         }
-        /* Estilos para el botón de chat seleccionado */
-        [data-testid="stSidebar"] .stButton>button:focus {
-            background-color: #e0e6ed;
+        /* Efecto al pasar el mouse */
+        [data-testid="stSidebar"] .stButton>button:hover {
+            border-color: rgba(128, 128, 128, 0.8);
+            background-color: rgba(128, 128, 128, 0.1);
         }
+        
         /* Estilos para los mensajes de chat */
         div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-assistant"]) {
             border: 1px solid rgba(128, 128, 128, 0.2); border-radius: 20px 20px 20px 2px;
@@ -168,134 +173,4 @@ def pantalla_chat():
                 st.link_button("Suscribirme ahora", link_mp, type="primary", use_container_width=True)
 
         st.divider()
-        if st.button("➕ Nueva Consulta", type="primary", use_container_width=True):
-            nueva_id = f"Consulta {len(st.session_state.sesiones_chat) + 1}"
-            st.session_state.sesiones_chat[nueva_id] = []
-            st.session_state.sesion_actual = nueva_id
-            supabase.table("usuarios").update({"historial": st.session_state.sesiones_chat}).eq("email", user.email).execute()
-            st.rerun()
-
-        st.write("") # Pequeño espacio visual
-        
-        # --- LÓGICA DE LISTA DE CHATS CON BOTÓN DE BORRAR MEJORADO VISUALMENTE ---
-        lista_chats = list(st.session_state.sesiones_chat.keys())
-        
-        for nombre_chat in reversed(lista_chats):
-            # Usamos columnas ajustadas e invertimos el orden
-            col_del, col_btn = st.columns([0.1, 0.9]) 
-            
-            with col_del:
-                # Usamos una "❌" simple y compacta, como sugirió el usuario
-                if st.button("❌", key=f"del_{nombre_chat}", help="Borrar este chat", use_container_width=True):
-                    # 1. Borramos el chat del diccionario
-                    del st.session_state.sesiones_chat[nombre_chat]
-                    
-                    # 2. Si borró el chat donde estaba parado, lo movemos a otro
-                    if st.session_state.sesion_actual == nombre_chat:
-                        if len(st.session_state.sesiones_chat) > 0:
-                            st.session_state.sesion_actual = list(st.session_state.sesiones_chat.keys())[-1]
-                        else:
-                            # Si borró absolutamente todo, creamos un chat vacío por defecto
-                            st.session_state.sesiones_chat = {"Nueva Consulta": []}
-                            st.session_state.sesion_actual = "Nueva Consulta"
-                    
-                    # 3. Guardamos los cambios inmediatamente en Supabase
-                    supabase.table("usuarios").update({
-                        "historial": st.session_state.sesiones_chat
-                    }).eq("email", user.email).execute()
-                    
-                    # 4. Refrescamos la pantalla para que desaparezca
-                    st.rerun()
-                    
-            with col_btn:
-                prefijo = "🟢" if nombre_chat == st.session_state.sesion_actual else "📄"
-                if st.button(f"{prefijo} {nombre_chat}", key=f"btn_{nombre_chat}", use_container_width=True):
-                    st.session_state.sesion_actual = nombre_chat
-                    st.rerun()
-        # ----------------------------------------------------------------------
-        
-        st.divider()
-        if st.button("Cerrar Sesión", use_container_width=True):
-            supabase.auth.sign_out()
-            st.session_state.user_data = None
-            if "chat_iniciado" in st.session_state: del st.session_state["chat_iniciado"]
-            st.rerun()
-
-    st.title(f"{st.session_state.sesion_actual}")
-    
-    @st.cache_resource
-    def load_ia():
-        emb = OpenAIEmbeddings(model="text-embedding-3-small")
-        vdb = Chroma(persist_directory="MI_BASE_VECTORIAL", embedding_function=emb)
-        return vdb, ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
-
-    vdb, llm = load_ia()
-    historial_actual = st.session_state.sesiones_chat.get(st.session_state.sesion_actual, [])
-    
-    for m in historial_actual:
-        with st.chat_message(m["role"]): st.markdown(m["content"])
-
-    if prompt := st.chat_input("¿Qué duda legal tenés sobre Chubut?"):
-        if creditos > 0 or es_pro:
-            historial_actual.append({"role": "user", "content": prompt})
-            with st.chat_message("user"): st.markdown(prompt)
-            
-            with st.chat_message("assistant"):
-                with st.spinner("Buscando fallos..."):
-                    docs = vdb.similarity_search(prompt, k=4)
-                    ctx = "\n\n".join([d.page_content for d in docs])
-                    
-                    instruccion_base = f"""Sos Chubut.IA, asistente jurídico de Chubut.
-Contexto: {ctx}
-
-REGLAS DE FORMATO:
-1. VISUALIZACIÓN DE FALLOS: Si el usuario pide jurisprudencia o un fallo, usá EXACTAMENTE este formato visual con emojis y viñetas:
-
-📌 **[Título del Fallo]**
-* 📅 **Fecha del Fallo:** [Fecha]
-* 📖 **Cita Textual:** "[Extracto clave]"
-* 📝 **Resumen de los Hechos:** [Resumen]
-* ⚖️ **Resolución:** [Decisión]
-* 🔗 **Ver fallo oficial:** https://pdf.ai/
-
-2. ANÁLISIS: Respondé fluido en párrafos si es una consulta general o un análisis. Si dentro del análisis citás un fallo, aplicá estrictamente la estructura de viñetas y emojis de la Regla 1.
-"""
-                    msgs_ia = [SystemMessage(content=instruccion_base)]
-                    for m in historial_actual:
-                        role = HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"])
-                        msgs_ia.append(role)
-                    
-                    res = llm.invoke(msgs_ia)
-                    st.markdown(res.content)
-                    historial_actual.append({"role": "assistant", "content": res.content})
-                    
-                    nuevo_conteo = creditos if es_pro else creditos - 1
-                    
-                    sesion_vieja = st.session_state.sesion_actual
-                    if sesion_vieja.startswith("Consulta ") and len(historial_actual) == 2:
-                        try:
-                            tit_p = f"Resume esto en 3 palabras: {prompt}"
-                            nuevo_titulo = llm.invoke([HumanMessage(content=tit_p)]).content.replace('"', '').strip()
-                            st.session_state.sesiones_chat[nuevo_titulo] = st.session_state.sesiones_chat.pop(sesion_vieja)
-                            st.session_state.sesion_actual = nuevo_titulo
-                        except: pass
-                    else:
-                        st.session_state.sesiones_chat[st.session_state.sesion_actual] = historial_actual
-
-                    supabase.table("usuarios").update({
-                        "consultas": nuevo_conteo,
-                        "historial": st.session_state.sesiones_chat
-                    }).eq("email", user.email).execute()
-                    st.rerun()
-
-# --- ARRANQUE Y DETECCIÓN DE RECUPERACIÓN ---
-query_params = st.query_params
-if "type" in query_params and query_params["type"] == "recovery":
-    st.session_state.recovery_mode = True
-
-if st.session_state.recovery_mode:
-    pantalla_recuperacion()
-elif st.session_state.user_data is None:
-    pantalla_acceso()
-else:
-    pantalla_chat()
+        if st.button("➕ Nueva Consulta", type="primary", use_
