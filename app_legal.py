@@ -49,6 +49,19 @@ def pantalla_acceso():
         with tab_in:
             email = st.text_input("Email", key="login_email")
             password = st.text_input("Contraseña", type="password", key="login_pass")
+            
+            # --- NUEVO: BOTÓN DE OLVIDÉ MI CONTRASEÑA ---
+            if st.button("¿Olvidaste tu contraseña?", type="secondary"):
+                if email:
+                    try:
+                        supabase.auth.reset_password_email(email)
+                        st.success("Te enviamos un correo para recuperar tu contraseña (revisá Spam).")
+                    except Exception as e:
+                        st.error("Error al enviar el correo. Verificá que tu email sea correcto.")
+                else:
+                    st.warning("Por favor, escribí tu email en el cuadro de arriba antes de tocar este botón.")
+            
+            st.write("") # Espaciador
             if st.button("Iniciar Sesión", type="primary", use_container_width=True):
                 try:
                     res = supabase.auth.sign_in_with_password({"email": email, "password": password})
@@ -81,7 +94,6 @@ def pantalla_chat():
     db_res = supabase.table("usuarios").select("*").eq("email", user.email).execute()
     
     if len(db_res.data) == 0:
-        # Registro inicial si por alguna razón no existe en la tabla usuarios
         historial_db = {"Nueva Consulta": []}
         supabase.table("usuarios").insert({
             "usuario": nombre, "email": user.email, "consultas": 3, "plan": "gratis", "historial": historial_db
@@ -113,7 +125,7 @@ def pantalla_chat():
                 st.error("🚫 Consultas agotadas")
                 st.markdown("### 💎 Pasate a Pro")
                 st.write("Seguí consultando de forma ilimitada.")
-                link_mp = "https://mpago.la/1f481Uj" # Tu link real
+                link_mp = "https://mpago.la/1f481Uj" 
                 st.link_button("Suscribirme ahora", link_mp, type="primary", use_container_width=True)
 
         st.divider()
@@ -154,7 +166,6 @@ def pantalla_chat():
         with st.chat_message(m["role"]): st.markdown(m["content"])
 
     if prompt := st.chat_input("¿Qué duda legal tenés sobre Chubut?"):
-        # PERMISO DE CONSULTA: Si tiene créditos O es Pro
         if creditos > 0 or es_pro:
             historial_actual.append({"role": "user", "content": prompt})
             with st.chat_message("user"): st.markdown(prompt)
@@ -163,9 +174,28 @@ def pantalla_chat():
                 with st.spinner("Buscando fallos..."):
                     docs = vdb.similarity_search(prompt, k=4)
                     ctx = "\n\n".join([d.page_content for d in docs])
-                    instruccion = f"Sos Chubut.IA. Contexto: {ctx}. Si es nuevo, usa formato rígido. Si es seguimiento, charlá natural."
                     
-                    msgs_ia = [SystemMessage(content=instruccion)]
+                    # =======================================================
+                    # NUEVO: REGLAS ESTRÍCTAS EN EL PROMPT DEL SISTEMA
+                    # =======================================================
+                    instruccion_base = f"""Sos Chubut.IA, el asistente jurídico experto de la provincia del Chubut.
+Contexto recuperado de la base de datos: {ctx}
+
+REGLAS DE FORMATO PARA TUS RESPUESTAS:
+1. VISUALIZACIÓN DE FALLOS: Siempre que el usuario solicite ver, buscar o consultar un fallo específico, DEBES usar OBLIGATORIAMENTE esta estructura visual exacta:
+
+**Título del Fallo:** [Nombre de la carátula o título]
+**Fecha:** [Fecha de resolución]
+**Cita Textual:** "[Extracto clave o doctrina del fallo]"
+**Resumen de los Hechos:** [Descripción concisa del caso]
+**Resolución:** [Decisión tomada por el tribunal]
+**Enlace al Documento:** https://play.google.com/store/apps/details?id=com.estsoft.alpdf&hl=es_UY
+
+2. ANÁLISIS GENERALES Y OPINIONES: Si el usuario pide un análisis jurídico, una explicación o un debate, responde con texto natural y fluido (párrafos). Si durante ese análisis necesitas citar un fallo, puedes usar la estructura de la Regla 1 para presentarlo, y luego continuar con tu análisis.
+"""
+                    msgs_ia = [SystemMessage(content=instruccion_base)]
+                    # =======================================================
+
                     for m in historial_actual:
                         role = HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"])
                         msgs_ia.append(role)
