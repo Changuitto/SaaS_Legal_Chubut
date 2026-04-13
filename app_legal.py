@@ -12,7 +12,20 @@ st.set_page_config(page_title="Chubut.IA - Legal", page_icon="logo.png", layout=
 st.markdown("""
     <style>
         footer {visibility: hidden;}
-        .stButton>button { width: 100%; border-radius: 10px; text-align: left; padding-left: 15px; }
+        /* Estilos para el botón de chat en la barra lateral */
+        [data-testid="stSidebar"] .stButton>button { 
+            width: 100%; 
+            border-radius: 10px; 
+            text-align: left; 
+            padding-left: 15px; 
+            background-color: #f0f2f6;
+            color: #31333F;
+        }
+        /* Estilos para el botón de chat seleccionado */
+        [data-testid="stSidebar"] .stButton>button:focus {
+            background-color: #e0e6ed;
+        }
+        /* Estilos para los mensajes de chat */
         div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-assistant"]) {
             border: 1px solid rgba(128, 128, 128, 0.2); border-radius: 20px 20px 20px 2px;
             padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
@@ -164,22 +177,16 @@ def pantalla_chat():
 
         st.write("") # Pequeño espacio visual
         
-        # --- NUEVA LÓGICA: LISTA DE CHATS CON BOTÓN DE BORRAR ---
+        # --- LÓGICA DE LISTA DE CHATS CON BOTÓN DE BORRAR MEJORADO VISUALMENTE ---
         lista_chats = list(st.session_state.sesiones_chat.keys())
         
         for nombre_chat in reversed(lista_chats):
-            col_btn, col_del = st.columns([0.85, 0.15]) # 85% para el nombre, 15% para la basura
+            # Usamos columnas ajustadas e invertimos el orden
+            col_del, col_btn = st.columns([0.1, 0.9]) 
             
-            prefijo = "🟢" if nombre_chat == st.session_state.sesion_actual else "📄"
-            
-            with col_btn:
-                if st.button(f"{prefijo} {nombre_chat}", key=f"btn_{nombre_chat}", use_container_width=True):
-                    st.session_state.sesion_actual = nombre_chat
-                    st.rerun()
-                    
             with col_del:
-                # El botón de borrar tiene un identificador único para que Streamlit no se confunda
-                if st.button("🗑️", key=f"del_{nombre_chat}", help="Borrar este chat"):
+                # Usamos una "❌" simple y compacta, como sugirió el usuario
+                if st.button("❌", key=f"del_{nombre_chat}", help="Borrar este chat", use_container_width=True):
                     # 1. Borramos el chat del diccionario
                     del st.session_state.sesiones_chat[nombre_chat]
                     
@@ -199,7 +206,13 @@ def pantalla_chat():
                     
                     # 4. Refrescamos la pantalla para que desaparezca
                     st.rerun()
-        # ---------------------------------------------------------
+                    
+            with col_btn:
+                prefijo = "🟢" if nombre_chat == st.session_state.sesion_actual else "📄"
+                if st.button(f"{prefijo} {nombre_chat}", key=f"btn_{nombre_chat}", use_container_width=True):
+                    st.session_state.sesion_actual = nombre_chat
+                    st.rerun()
+        # ----------------------------------------------------------------------
         
         st.divider()
         if st.button("Cerrar Sesión", use_container_width=True):
