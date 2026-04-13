@@ -62,7 +62,6 @@ def pantalla_acceso():
         tab_in, tab_reg = st.tabs(["🔑 Entrar", "📝 Registrarse"])
         
         with tab_in:
-            # --- FLUJO NORMAL DE LOGIN ---
             if not st.session_state.reset_step:
                 email = st.text_input("Email", key="login_email")
                 password = st.text_input("Contraseña", type="password", key="login_pass")
@@ -87,10 +86,7 @@ def pantalla_acceso():
                         st.rerun()
                     except Exception as e:
                         st.error("Credenciales incorrectas o email no confirmado.")
-            
-            # --- FLUJO DE RECUPERACIÓN DE CONTRASEÑA ---
             else:
-                # --- TEXTOS CORREGIDOS AQUÍ ---
                 st.info(f"Revisá tu correo ({st.session_state.reset_email}). Te enviamos un código de seguridad.")
                 codigo_otp = st.text_input("Código de recuperación", placeholder="Pegá el código de tu correo acá")
                 nueva_pass = st.text_input("Nueva Contraseña", type="password")
@@ -98,12 +94,8 @@ def pantalla_acceso():
                 if st.button("Confirmar Cambio de Contraseña", type="primary", use_container_width=True):
                     if len(nueva_pass) >= 6:
                         try:
-                            # 1. Verificamos el código (esto autoriza temporalmente al usuario)
                             supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": codigo_otp, "type": "recovery"})
-                            
-                            # 2. Le cambiamos la contraseña
                             supabase.auth.update_user({"password": nueva_pass})
-                            
                             st.success("¡Contraseña actualizada con éxito! Ya podés iniciar sesión.")
                             st.session_state.reset_step = False
                         except Exception as e:
@@ -213,7 +205,8 @@ def pantalla_chat():
             if "chat_iniciado" in st.session_state: del st.session_state["chat_iniciado"]
             st.rerun()
 
-    st.title(f"{st.session_state.sesion_actual}")
+    # Quitamos el título normal de Streamlit para reemplazarlo por uno más limpio
+    # st.title(f"{st.session_state.sesion_actual}")  <- Lo borré para que no estorbe
     
     @st.cache_resource
     def load_ia():
@@ -224,20 +217,39 @@ def pantalla_chat():
     vdb, llm = load_ia()
     historial_actual = st.session_state.sesiones_chat.get(st.session_state.sesion_actual, [])
     
-    for m in historial_actual:
-        with st.chat_message(m["role"]): st.markdown(m["content"])
+    # --- NUEVO: PANTALLA DE BIENVENIDA CENTRADA ---
+    if len(historial_actual) == 0:
+        # Si no hay mensajes, mostramos el saludo centrado
+        st.markdown(f"""
+            <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 60vh; text-align: center;">
+                <h3 style="color: #9CA3AF; font-weight: 400; margin-bottom: 5px;">Hola, {nombre}</h3>
+                <h1 style="font-size: 3rem; font-weight: 600; margin-top: 0;">¿En qué puedo ayudarte hoy?</h1>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        # Si ya hay mensajes, mostramos el chat normal
+        st.markdown(f"### {st.session_state.sesion_actual}") # Título más sutil arriba
+        for m in historial_actual:
+            with st.chat_message(m["role"]): st.markdown(m["content"])
+    # ----------------------------------------------
 
     if prompt := st.chat_input("¿Qué duda legal tenés sobre Chubut?"):
         if creditos > 0 or es_pro:
             historial_actual.append({"role": "user", "content": prompt})
-            with st.chat_message("user"): st.markdown(prompt)
+            st.rerun() # Obligamos a recargar la pantalla para que quite el saludo gigante y muestre la burbuja del usuario primero
+        else:
+            st.error("No te quedan consultas. Suscribite al plan Pro para continuar.")
             
-            with st.chat_message("assistant"):
-                with st.spinner("Buscando fallos..."):
-                    docs = vdb.similarity_search(prompt, k=4)
-                    ctx = "\n\n".join([d.page_content for d in docs])
-                    
-                    instruccion_base = f"""Sos Chubut.IA, asistente jurídico de Chubut.
+    # Lógica de respuesta (se ejecuta después del rerun si hay un último mensaje del usuario esperando respuesta)
+    if len(historial_actual) > 0 and historial_actual[-1]["role"] == "user":
+        prompt = historial_actual[-1]["content"]
+        
+        with st.chat_message("assistant"):
+            with st.spinner("Buscando fallos..."):
+                docs = vdb.similarity_search(prompt, k=4)
+                ctx = "\n\n".join([d.page_content for d in docs])
+                
+                instruccion_base = f"""Sos Chubut.IA, asistente jurídico de Chubut.
 Contexto: {ctx}
 
 REGLAS DE FORMATO:
@@ -252,33 +264,37 @@ REGLAS DE FORMATO:
 
 2. ANÁLISIS: Respondé fluido en párrafos si es una consulta general o un análisis. Si dentro del análisis citás un fallo, aplicá estrictamente la estructura de viñetas y emojis de la Regla 1.
 """
-                    msgs_ia = [SystemMessage(content=instruccion_base)]
-                    for m in historial_actual:
-                        role = HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"])
-                        msgs_ia.append(role)
-                    
-                    res = llm.invoke(msgs_ia)
-                    st.markdown(res.content)
-                    historial_actual.append({"role": "assistant", "content": res.content})
-                    
-                    nuevo_conteo = creditos if es_pro else creditos - 1
-                    
-                    sesion_vieja = st.session_state.sesion_actual
-                    if sesion_vieja.startswith("Consulta ") and len(historial_actual) == 2:
-                        try:
-                            tit_p = f"Resume esto en 3 palabras: {prompt}"
-                            nuevo_titulo = llm.invoke([HumanMessage(content=tit_p)]).content.replace('"', '').strip()
-                            st.session_state.sesiones_chat[nuevo_titulo] = st.session_state.sesiones_chat.pop(sesion_vieja)
-                            st.session_state.sesion_actual = nuevo_titulo
-                        except: pass
-                    else:
-                        st.session_state.sesiones_chat[st.session_state.sesion_actual] = historial_actual
+                msgs_ia = [SystemMessage(content=instruccion_base)]
+                
+                # Le pasamos el historial omitiendo el último mensaje porque ya se lo damos a invocar
+                for m in historial_actual[:-1]:
+                    role = HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"])
+                    msgs_ia.append(role)
+                
+                msgs_ia.append(HumanMessage(content=prompt))
+                
+                res = llm.invoke(msgs_ia)
+                st.markdown(res.content)
+                historial_actual.append({"role": "assistant", "content": res.content})
+                
+                nuevo_conteo = creditos if es_pro else creditos - 1
+                
+                sesion_vieja = st.session_state.sesion_actual
+                if sesion_vieja.startswith("Consulta ") and len(historial_actual) == 2:
+                    try:
+                        tit_p = f"Resume esto en 3 palabras: {prompt}"
+                        nuevo_titulo = llm.invoke([HumanMessage(content=tit_p)]).content.replace('"', '').strip()
+                        st.session_state.sesiones_chat[nuevo_titulo] = st.session_state.sesiones_chat.pop(sesion_vieja)
+                        st.session_state.sesion_actual = nuevo_titulo
+                    except: pass
+                else:
+                    st.session_state.sesiones_chat[st.session_state.sesion_actual] = historial_actual
 
-                    supabase.table("usuarios").update({
-                        "consultas": nuevo_conteo,
-                        "historial": st.session_state.sesiones_chat
-                    }).eq("email", user.email).execute()
-                    st.rerun()
+                supabase.table("usuarios").update({
+                    "consultas": nuevo_conteo,
+                    "historial": st.session_state.sesiones_chat
+                }).eq("email", user.email).execute()
+                st.rerun()
 
 # --- ARRANQUE ---
 if st.session_state.user_data is None:
