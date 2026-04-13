@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 # 1. CONFIGURACIÓN DE PÁGINA
 st.set_page_config(page_title="Chubut.IA - Legal", page_icon="logo.png", layout="wide")
 
-# --- CSS PARA DISEÑO PROFESIONAL ---
+# --- CSS PROFESIONAL ---
 st.markdown("""
     <style>
         footer {visibility: hidden;}
@@ -25,195 +25,152 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. CONEXIÓN A SERVICIOS (API KEYS)
+# 2. CONEXIÓN A SERVICIOS
 try:
-    OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
-    os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+    os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
     supabase: Client = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
-except Exception as e:
-    st.error("🚨 Error de configuración: Revisá los Secrets en Streamlit.")
+except Exception:
+    st.error("🚨 Error de configuración en Secrets.")
     st.stop()
 
-# 3. MANEJO DE ESTADO DE SESIÓN
+# 3. ESTADO DE SESIÓN (Persistencia de Chats)
 if "user_data" not in st.session_state: st.session_state.user_data = None
-if "sesiones_chat" not in st.session_state: st.session_state.sesiones_chat = {"Nueva Consulta": []}
-if "sesion_actual" not in st.session_state: st.session_state.sesion_actual = "Nueva Consulta"
+if "sesiones_chat" not in st.session_state: st.session_state.sesiones_chat = {"Consulta 1": []}
+if "sesion_actual" not in st.session_state: st.session_state.sesion_actual = "Consulta 1"
 
 # ==========================================
-# PANTALLA DE ACCESO (LOGIN / REGISTRO)
+# PANTALLA DE ACCESO
 # ==========================================
 def pantalla_acceso():
     col1, col2, col3 = st.columns([1, 1.8, 1])
     with col2:
-        if os.path.exists("logo.png"):
-            st.image("logo.png", use_container_width=True)
-        else:
-            st.markdown("<h1 style='text-align: center;'>Chubut.IA</h1>", unsafe_allow_html=True)
+        if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
+        st.markdown("<h3 style='text-align: center;'>Acceso al Sistema</h3>", unsafe_allow_html=True)
         
-        st.markdown("<h4 style='text-align: center;'>Motor de Jurisprudencia Provincial</h4>", unsafe_allow_html=True)
-        st.write("<br>", unsafe_allow_html=True)
+        tab_in, tab_reg = st.tabs(["🔑 Entrar", "📝 Registrarse"])
         
-        tab_login, tab_registro = st.tabs(["🔑 Iniciar Sesión", "📝 Crear Cuenta"])
-        
-        with tab_login:
-            login_email = st.text_input("Email", key="log_email")
-            login_pass = st.text_input("Contraseña", type="password", key="log_pass")
-            
-            if st.button("Entrar", type="primary"):
+        with tab_in:
+            email = st.text_input("Email", key="login_email")
+            password = st.text_input("Contraseña", type="password", key="login_pass")
+            if st.button("Iniciar Sesión", type="primary"):
                 try:
-                    res = supabase.auth.sign_in_with_password({"email": login_email, "password": login_pass})
-                    if res.user:
-                        st.session_state.user_data = res.user
-                        st.success("¡Bienvenido!")
-                        st.rerun()
+                    res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                    st.session_state.user_data = res.user
+                    st.rerun()
                 except Exception as e:
                     if "Email not confirmed" in str(e):
-                        st.warning("⚠️ Debés confirmar tu email primero. Revisá tu casilla (y Spam).")
+                        st.warning("⚠️ Confirma tu email en la carpeta de Spam.")
                     else:
-                        st.error("Credenciales incorrectas o usuario no encontrado.")
-            
-            # Recuperación de contraseña
-            if st.button("¿Olvidaste tu contraseña?", key="btn_forgot"):
-                if login_email:
-                    try:
-                        supabase.auth.reset_password_for_email(login_email)
-                        st.info(f"📩 Se envió un link para cambiar tu clave a: {login_email}")
-                    except:
-                        st.error("No pudimos enviar el correo. Intentá más tarde.")
-                else:
-                    st.warning("Escribí tu email arriba para que podamos ayudarte.")
+                        st.error("Credenciales incorrectas.")
 
-        with tab_registro:
-            reg_user = st.text_input("Nombre de Usuario / Estudio", placeholder="Ej: Roman07")
-            reg_email = st.text_input("Correo Electrónico")
-            reg_pass = st.text_input("Elegí una Contraseña", type="password")
-            confirm_pass = st.text_input("Confirmá tu Contraseña", type="password")
-            
-            if st.button("Registrarme", type="primary"):
-                if reg_pass != confirm_pass:
-                    st.error("❌ Las contraseñas no coinciden.")
-                elif len(reg_pass) < 6:
-                    st.error("❌ La contraseña debe tener al menos 6 caracteres.")
-                elif not reg_user or not reg_email or "@" not in reg_email:
-                    st.error("❌ Completá todos los campos correctamente.")
+        with tab_reg:
+            new_user = st.text_input("Nombre / Estudio", placeholder="Ej: Roman_Juridico")
+            new_email = st.text_input("Tu Gmail")
+            new_pass = st.text_input("Contraseña", type="password")
+            confirm_pass = st.text_input("Confirmar Contraseña", type="password")
+            if st.button("Crear Cuenta"):
+                if new_pass != confirm_pass: st.error("Las contraseñas no coinciden.")
                 else:
                     try:
-                        # Registro en Supabase Auth con metadatos
-                        res = supabase.auth.sign_up({
-                            "email": reg_email,
-                            "password": reg_pass,
-                            "options": {"data": {"display_name": reg_user}}
-                        })
-                        st.success(f"✅ ¡Cuenta creada! Revisá tu mail **{reg_email}** para confirmarla.")
-                        st.info("Nota: Si no confirmás el mail, no podrás iniciar sesión.")
-                    except Exception as e:
-                        st.error(f"Error al registrar: {e}")
+                        supabase.auth.sign_up({"email": new_email, "password": new_pass, "options": {"data": {"display_name": new_user}}})
+                        st.success("¡Cuenta creada! Revisa tu email (mira en Spam).")
+                    except Exception as e: st.error(f"Error: {e}")
 
 # ==========================================
-# PANTALLA DE CHAT (SISTEMA IA)
+# PANTALLA DE CHAT
 # ==========================================
 def pantalla_chat():
     user = st.session_state.user_data
-    # Extraemos el nombre de usuario de la metadata guardada en el registro
-    nombre_mostrar = user.user_metadata.get("display_name", user.email.split("@")[0])
+    nombre = user.user_metadata.get("display_name", user.email.split("@")[0])
     
-    # Sincronización de Créditos (Tabla 'usuarios')
-    res_db = supabase.table("usuarios").select("*").eq("email", user.email).execute()
-    if len(res_db.data) == 0:
-        # Si es la primera vez, le creamos sus 3 consultas gratis
-        supabase.table("usuarios").insert({
-            "usuario": nombre_mostrar,
-            "email": user.email,
-            "consultas": 3,
-            "password": "AUTH_USER"
-        }).execute()
+    # Manejo de Créditos
+    db_res = supabase.table("usuarios").select("*").eq("email", user.email).execute()
+    if len(db_res.data) == 0:
+        supabase.table("usuarios").insert({"usuario": nombre, "email": user.email, "consultas": 3, "password": "AUTH"}).execute()
         creditos = 3
     else:
-        creditos = res_db.data[0]["consultas"]
+        creditos = db_res.data[0]["consultas"]
 
-    # --- BARRA LATERAL (SIDEBAR) ---
+    # --- BARRA LATERAL (Sidebar con Historial Real) ---
     with st.sidebar:
         if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
         st.divider()
-        st.markdown(f"👤 **{nombre_mostrar}**")
-        st.caption(f"📧 {user.email}")
-        
-        if creditos > 0:
-            st.success(f"🎁 Te quedan **{creditos}** consultas gratis")
-        else:
-            st.error("🚫 Consultas agotadas")
-            st.markdown("### 💎 Pasate a Pro")
-            st.write("Seguí consultando de forma ilimitada.")
-            # AQUÍ PEGARÁS TU LINK DE MERCADO PAGO LUEGO
-            st.link_button("Suscribirme (6,99 USD)", "https://mercadopago.com.ar", type="primary")
+        st.markdown(f"👤 **{nombre}**")
+        st.success(f"Consultas: **{creditos}**")
         
         st.divider()
-        if st.button("➕ Nueva Consulta"):
-            nueva_id = len(st.session_state.sesiones_chat) + 1
-            nombre_chat = f"Consulta {nueva_id}"
-            st.session_state.sesiones_chat[nombre_chat] = []
-            st.session_state.sesion_actual = nombre_chat
+        st.subheader("Tus Consultas")
+        
+        # Botón para crear nuevo chat
+        if st.button("➕ Nueva Consulta", type="primary"):
+            nueva_id = f"Consulta {len(st.session_state.sesiones_chat) + 1}"
+            st.session_state.sesiones_chat[nueva_id] = []
+            st.session_state.sesion_actual = nueva_id
             st.rerun()
-            
+
+        # Lista de chats anteriores (¡Aquí estaba el error!)
+        for nombre_chat in list(st.session_state.sesiones_chat.keys()):
+            # Resaltar el chat actual
+            tipo_btn = "secondary" if nombre_chat == st.session_state.sesion_actual else "primary"
+            if st.button(f"📄 {nombre_chat}", key=f"btn_{nombre_chat}"):
+                st.session_state.sesion_actual = nombre_chat
+                st.rerun()
+        
         st.divider()
         if st.button("Cerrar Sesión"):
             supabase.auth.sign_out()
             st.session_state.user_data = None
             st.rerun()
 
-    # --- LÓGICA DE IA (RAG) ---
-    @st.cache_resource
-    def conectar_ia():
-        embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-        # Asegurate de que la carpeta MI_BASE_VECTORIAL esté en tu GitHub
-        vectordb = Chroma(persist_directory="MI_BASE_VECTORIAL", embedding_function=embeddings)
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-        return vectordb, llm
-
-    try:
-        vectordb, llm = conectar_ia()
-    except:
-        st.warning("⚠️ Cargando base de datos legal...")
-        st.stop()
-
-    historial = st.session_state.sesiones_chat[st.session_state.sesion_actual]
+    # --- CUERPO DEL CHAT ---
+    st.title(f"🔍 {st.session_state.sesion_actual}")
     
-    # Mostrar mensajes previos
-    for msg in historial:
-        with st.chat_message(msg["role"]): st.markdown(msg["content"])
+    @st.cache_resource
+    def load_ia():
+        emb = OpenAIEmbeddings(model="text-embedding-3-small")
+        vdb = Chroma(persist_directory="MI_BASE_VECTORIAL", embedding_function=emb)
+        return vdb, ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
 
-    # Entrada del Usuario
-    if prompt := st.chat_input("¿Qué duda legal tenés sobre Chubut?"):
-        if creditos <= 0:
-            st.warning("Has agotado tus consultas gratuitas. Suscribite al plan Pro para continuar.")
-            st.stop()
+    vdb, llm = load_ia()
+    
+    # Mostrar historial del chat seleccionado
+    historial = st.session_state.sesiones_chat[st.session_state.sesion_actual]
+    for m in historial:
+        with st.chat_message(m["role"]): st.markdown(m["content"])
+
+    # Entrada de mensaje
+    if prompt := st.chat_input("¿En qué puedo ayudarte con la jurisprudencia de Chubut?"):
+        if creditos > 0:
+            historial.append({"role": "user", "content": prompt})
+            with st.chat_message("user"): st.markdown(prompt)
             
-        historial.append({"role": "user", "content": prompt})
-        with st.chat_message("user"): st.markdown(prompt)
-        
-        with st.chat_message("assistant"):
-            with st.spinner("Analizando fallos en Chubut..."):
-                # Buscar jurisprudencia
-                docs = vectordb.similarity_search(prompt, k=4)
-                contexto_fallos = "\n\n".join([d.page_content for d in docs])
-                
-                instruccion = f"Sos Chubut.IA. Contexto legal: {contexto_fallos}. Formato: 📌 Carátula, 📅 Fecha, 📝 Cita, ⚖️ Resolución."
-                mensajes = [SystemMessage(content=instruccion)]
-                for m in historial:
-                    role = HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"])
-                    mensajes.append(role)
-                
-                # Respuesta de la IA
-                respuesta = llm.invoke(mensajes)
-                st.markdown(respuesta.content)
-                historial.append({"role": "assistant", "content": respuesta.content})
-                
-                # Descontar crédito
-                supabase.table("usuarios").update({"consultas": creditos - 1}).eq("email", user.email).execute()
-                st.rerun()
+            with st.chat_message("assistant"):
+                with st.spinner("Buscando en fallos..."):
+                    docs = vdb.similarity_search(prompt, k=4)
+                    ctx = "\n\n".join([d.page_content for d in docs])
+                    
+                    # SYSTEM PROMPT CON MEMORIA Y FORMATO
+                    instruccion = f"""Sos Chubut.IA. Contexto legal: {ctx}
+                    REGLAS:
+                    1. Si es una consulta nueva, usa el formato: 📌 Carátula, 📅 Fecha, 📝 Cita, ⚖️ Resolución.
+                    2. Si el usuario te repregunta sobre lo anterior, responde de forma natural usando el historial de abajo."""
+                    
+                    # Construir cadena de mensajes para la memoria
+                    msgs_ia = [SystemMessage(content=instruccion)]
+                    for m in historial:
+                        if m["role"] == "user": msgs_ia.append(HumanMessage(content=m["content"]))
+                        else: msgs_ia.append(AIMessage(content=m["content"]))
+                    
+                    res = llm.invoke(msgs_ia)
+                    st.markdown(res.content)
+                    historial.append({"role": "assistant", "content": res.content})
+                    
+                    # Actualizar créditos en DB
+                    supabase.table("usuarios").update({"consultas": creditos - 1}).eq("email", user.email).execute()
+                    st.rerun()
+        else:
+            st.error("Se terminaron tus consultas gratis. ¡Suscribite para seguir!")
 
-# --- EJECUCIÓN PRINCIPAL ---
-if st.session_state.user_data is None:
-    pantalla_acceso()
-else:
-    pantalla_chat()
+# --- ARRANQUE ---
+if st.session_state.user_data is None: pantalla_acceso()
+else: pantalla_chat()
