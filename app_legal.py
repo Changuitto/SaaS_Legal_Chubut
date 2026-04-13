@@ -38,7 +38,7 @@ if "user_data" not in st.session_state: st.session_state.user_data = None
 if "recovery_mode" not in st.session_state: st.session_state.recovery_mode = False
 
 # ==========================================
-# LÓGICA DE RECUPERACIÓN (NUEVA)
+# LÓGICA DE RECUPERACIÓN
 # ==========================================
 def pantalla_recuperacion():
     col1, col2, col3 = st.columns([1, 1.8, 1])
@@ -84,7 +84,6 @@ def pantalla_acceso():
             if st.button("¿Olvidaste tu contraseña?", type="secondary"):
                 if email:
                     try:
-                        # Al enviar el correo, Supabase redireccionará al usuario de vuelta a la URL del sitio
                         supabase.auth.reset_password_email(email)
                         st.success("Te enviamos un correo para recuperar tu contraseña (revisá Spam).")
                     except Exception as e:
@@ -199,21 +198,21 @@ def pantalla_chat():
                     docs = vdb.similarity_search(prompt, k=4)
                     ctx = "\n\n".join([d.page_content for d in docs])
                     
-                    # INSTRUCCIÓN ACTUALIZADA CON "Ver fallo oficial"
+                    # --- INSTRUCCIÓN BASE ACTUALIZADA CON EMOJIS Y VIÑETAS ---
                     instruccion_base = f"""Sos Chubut.IA, asistente jurídico de Chubut.
 Contexto: {ctx}
 
 REGLAS DE FORMATO:
-1. VISUALIZACIÓN DE FALLOS: Si el usuario pide un fallo, usá EXACTAMENTE este formato:
+1. VISUALIZACIÓN DE FALLOS: Si el usuario pide jurisprudencia o un fallo, usá EXACTAMENTE este formato visual con emojis y viñetas:
 
-**Título del Fallo:** [Título]
-**Fecha:** [Fecha]
-**Cita Textual:** "[Extracto clave]"
-**Resumen de los Hechos:** [Resumen]
-**Resolución:** [Decisión]
-**Ver fallo oficial:** https://pdf.ai/
+📌 **[Título del Fallo]**
+* 📅 **Fecha del Fallo:** [Fecha]
+* 📖 **Cita Textual:** "[Extracto clave]"
+* 📝 **Resumen de los Hechos:** [Resumen]
+* ⚖️ **Resolución:** [Decisión]
+* 🔗 **Ver fallo oficial:** https://pdf.ai/
 
-2. ANÁLISIS: Respondé fluido si es una consulta general. Si citás un fallo, aplicá la estructura anterior.
+2. ANÁLISIS: Respondé fluido en párrafos si es una consulta general o un análisis. Si dentro del análisis citás un fallo, aplicá estrictamente la estructura de viñetas y emojis de la Regla 1.
 """
                     msgs_ia = [SystemMessage(content=instruccion_base)]
                     for m in historial_actual:
@@ -244,8 +243,6 @@ REGLAS DE FORMATO:
                     st.rerun()
 
 # --- ARRANQUE Y DETECCIÓN DE RECUPERACIÓN ---
-# Si la URL contiene un token de recuperación, Supabase loguea al usuario automáticamente.
-# Podemos detectar si el usuario ha entrado vía link de recuperación chequeando los parámetros.
 query_params = st.query_params
 if "type" in query_params and query_params["type"] == "recovery":
     st.session_state.recovery_mode = True
