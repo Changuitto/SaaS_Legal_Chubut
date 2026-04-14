@@ -38,11 +38,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. CONEXIÓN A SERVICIOS (MODIFICADO PARA RAILWAY)
-# Intentamos obtener las llaves de Railway (os.getenv) o de Streamlit (st.secrets)
+# 2. CONEXIÓN A SERVICIOS (MODIFICADO Y BLINDADO)
 OPENAI_KEY = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL") or st.secrets.get("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY") or st.secrets.get("SUPABASE_KEY")
+
+# --- ASPIRADORA DE BASURA (Limpia espacios y comillas invisibles) ---
+if OPENAI_KEY: OPENAI_KEY = str(OPENAI_KEY).strip().replace('"', '').replace("'", "")
+if SUPABASE_URL: SUPABASE_URL = str(SUPABASE_URL).strip().replace('"', '').replace("'", "").rstrip('/')
+if SUPABASE_KEY: SUPABASE_KEY = str(SUPABASE_KEY).strip().replace('"', '').replace("'", "")
 
 if not OPENAI_KEY or not SUPABASE_URL or not SUPABASE_KEY:
     st.error("🚨 Error de configuración: No se encontraron las llaves de acceso.")
