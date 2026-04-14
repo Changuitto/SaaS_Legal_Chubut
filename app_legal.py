@@ -38,13 +38,19 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. CONEXIÓN A SERVICIOS
-try:
-    os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
-    supabase: Client = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
-except Exception:
-    st.error("🚨 Error de configuración en Secrets.")
+# 2. CONEXIÓN A SERVICIOS (MODIFICADO PARA RAILWAY)
+# Intentamos obtener las llaves de Railway (os.getenv) o de Streamlit (st.secrets)
+OPENAI_KEY = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
+SUPABASE_URL = os.getenv("SUPABASE_URL") or st.secrets.get("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY") or st.secrets.get("SUPABASE_KEY")
+
+if not OPENAI_KEY or not SUPABASE_URL or not SUPABASE_KEY:
+    st.error("🚨 Error de configuración: No se encontraron las llaves de acceso.")
+    st.info("Asegurate de que OPENAI_API_KEY, SUPABASE_URL y SUPABASE_KEY estén en las Variables de Railway.")
     st.stop()
+else:
+    os.environ["OPENAI_API_KEY"] = OPENAI_KEY
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # 3. ESTADO DE SESIÓN BÁSICO
 if "user_data" not in st.session_state: st.session_state.user_data = None
@@ -205,9 +211,6 @@ def pantalla_chat():
             if "chat_iniciado" in st.session_state: del st.session_state["chat_iniciado"]
             st.rerun()
 
-    # Quitamos el título normal de Streamlit para reemplazarlo por uno más limpio
-    # st.title(f"{st.session_state.sesion_actual}")  <- Lo borré para que no estorbe
-    
     @st.cache_resource
     def load_ia():
         emb = OpenAIEmbeddings(model="text-embedding-3-small")
@@ -217,9 +220,7 @@ def pantalla_chat():
     vdb, llm = load_ia()
     historial_actual = st.session_state.sesiones_chat.get(st.session_state.sesion_actual, [])
     
-    # --- NUEVO: PANTALLA DE BIENVENIDA CENTRADA ---
     if len(historial_actual) == 0:
-        # Si no hay mensajes, mostramos el saludo centrado
         st.markdown(f"""
             <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 60vh; text-align: center;">
                 <h3 style="color: #9CA3AF; font-weight: 400; margin-bottom: 5px;">Hola, {nombre}</h3>
@@ -227,20 +228,17 @@ def pantalla_chat():
             </div>
         """, unsafe_allow_html=True)
     else:
-        # Si ya hay mensajes, mostramos el chat normal
-        st.markdown(f"### {st.session_state.sesion_actual}") # Título más sutil arriba
+        st.markdown(f"### {st.session_state.sesion_actual}") 
         for m in historial_actual:
             with st.chat_message(m["role"]): st.markdown(m["content"])
-    # ----------------------------------------------
 
     if prompt := st.chat_input("¿Qué duda legal tenés sobre Chubut?"):
         if creditos > 0 or es_pro:
             historial_actual.append({"role": "user", "content": prompt})
-            st.rerun() # Obligamos a recargar la pantalla para que quite el saludo gigante y muestre la burbuja del usuario primero
+            st.rerun() 
         else:
             st.error("No te quedan consultas. Suscribite al plan Pro para continuar.")
             
-    # Lógica de respuesta (se ejecuta después del rerun si hay un último mensaje del usuario esperando respuesta)
     if len(historial_actual) > 0 and historial_actual[-1]["role"] == "user":
         prompt = historial_actual[-1]["content"]
         
@@ -266,7 +264,6 @@ REGLAS DE FORMATO:
 """
                 msgs_ia = [SystemMessage(content=instruccion_base)]
                 
-                # Le pasamos el historial omitiendo el último mensaje porque ya se lo damos a invocar
                 for m in historial_actual[:-1]:
                     role = HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"])
                     msgs_ia.append(role)
