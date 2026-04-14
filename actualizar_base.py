@@ -6,7 +6,7 @@ from langchain_community.vectorstores import Chroma
 
 # 1. CONFIGURACIÓN
 os.environ["OPENAI_API_KEY"] = "PONER_LLAVE_AQUÍ"
-13rHkeh7nISs5fmSaDibqGS_mFP3schHc5QRM3N3siktkwcJx9UVxZYT3BlbkFJRYlx0WaZxTx098tggXwUKqjf_Fytsrc2etumuyeJTAdmSyXoells_rqlddkiEyEE1kJj8OJ9EA" # Poné tu llave real
+" # Poné tu llave real
 
 # Usamos la ruta donde tenés tus TXT (la carpeta que creamos en tu proyecto)
 ruta_txt = "./mi_base_legal" 
