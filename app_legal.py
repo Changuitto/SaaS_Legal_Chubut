@@ -1,3 +1,8 @@
+# 0. PARCHE PARA CHROMADB EN LINUX (RAILWAY)
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
 import os
 import streamlit as st
 from supabase import create_client, Client
@@ -84,7 +89,6 @@ def pantalla_acceso():
                             st.session_state.reset_email = email
                             st.rerun()
                         except Exception as e:
-                            # ACÁ ESTÁ EL DETECTOR DE ERRORES NUEVO
                             st.error(f"Error técnico: {e}")
                     else:
                         st.warning("Escribí tu email arriba para que podamos enviarte el código de recuperación.")
@@ -302,5 +306,4 @@ REGLAS DE FORMATO:
 if st.session_state.user_data is None:
     pantalla_acceso()
 else:
-    pantalla_chat()
     pantalla_chat()
