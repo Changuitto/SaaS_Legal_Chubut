@@ -80,7 +80,8 @@ def pantalla_acceso():
                             st.session_state.reset_email = email
                             st.rerun()
                         except Exception as e:
-                            st.error("Error al enviar el correo.")
+                            # ACÁ ESTÁ EL DETECTOR DE ERRORES NUEVO
+                            st.error(f"Error técnico: {e}")
                     else:
                         st.warning("Escribí tu email arriba para que podamos enviarte el código de recuperación.")
                 
@@ -297,4 +298,5 @@ REGLAS DE FORMATO:
 if st.session_state.user_data is None:
     pantalla_acceso()
 else:
+    pantalla_chat()
     pantalla_chat()
