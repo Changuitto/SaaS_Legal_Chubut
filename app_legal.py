@@ -4,32 +4,27 @@ import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import os
+import zipfile
 import streamlit as st
+from datetime import datetime, timedelta
 from supabase import create_client, Client
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
-# 1. CONFIGURACIÓN DE PÁGINA
-st.set_page_config(page_title="Chubut.IA - Legal", page_icon="logo.png", layout="wide")
+# 1. CONFIGURACIÓN DE PÁGINA Y ESTILO PROFESIONAL
+st.set_page_config(page_title="Chubut.IA - Jurisprudencia Inteligente", page_icon="logo.png", layout="wide")
 
-# --- CSS PROFESIONAL MEJORADO ---
 st.markdown("""
     <style>
         footer {visibility: hidden;}
         [data-testid="stSidebar"] .stButton>button { 
-            width: 100%; 
-            border-radius: 8px; 
-            text-align: left; 
-            padding-left: 10px; 
-            background-color: transparent; 
-            border: 1px solid rgba(128, 128, 128, 0.3); 
-            color: inherit;
-            transition: all 0.2s ease-in-out;
+            width: 100%; border-radius: 8px; text-align: left; padding-left: 10px; 
+            background-color: transparent; border: 1px solid rgba(128, 128, 128, 0.3); 
+            color: inherit; transition: all 0.2s ease-in-out;
         }
         [data-testid="stSidebar"] .stButton>button:hover {
-            border-color: rgba(128, 128, 128, 0.8);
-            background-color: rgba(128, 128, 128, 0.1);
+            border-color: rgba(128, 128, 128, 0.8); background-color: rgba(128, 128, 128, 0.1);
         }
         div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-assistant"]) {
             border: 1px solid rgba(128, 128, 128, 0.2); border-radius: 20px 20px 20px 2px;
@@ -43,27 +38,37 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. CONEXIÓN A SERVICIOS (MODIFICADO Y BLINDADO)
-OPENAI_KEY = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
-SUPABASE_URL = os.getenv("SUPABASE_URL") or st.secrets.get("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY") or st.secrets.get("SUPABASE_KEY")
-
-if OPENAI_KEY: OPENAI_KEY = str(OPENAI_KEY).strip().replace('"', '').replace("'", "")
-if SUPABASE_URL: SUPABASE_URL = str(SUPABASE_URL).strip().replace('"', '').replace("'", "").rstrip('/')
-if SUPABASE_KEY: SUPABASE_KEY = str(SUPABASE_KEY).strip().replace('"', '').replace("'", "")
+# 2. CONEXIÓN A SERVICIOS (Configuradas en Railway)
+OPENAI_KEY = os.getenv("OPENAI_API_KEY")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 if not OPENAI_KEY or not SUPABASE_URL or not SUPABASE_KEY:
-    st.error("🚨 Error de configuración: No se encontraron las llaves de acceso.")
-    st.info("Asegurate de que OPENAI_API_KEY, SUPABASE_URL y SUPABASE_KEY estén en las Variables de Railway.")
+    st.error("🚨 Error crítico: Faltan variables de configuración en Railway.")
     st.stop()
 else:
     os.environ["OPENAI_API_KEY"] = OPENAI_KEY
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# 3. ESTADO DE SESIÓN BÁSICO
+# 3. ESTADO DE SESIÓN
 if "user_data" not in st.session_state: st.session_state.user_data = None
-if "reset_step" not in st.session_state: st.session_state.reset_step = False
-if "reset_email" not in st.session_state: st.session_state.reset_email = ""
+
+# ==========================================
+# AUTOMATIZACIÓN DE PAGO (Webhook / Redirect)
+# ==========================================
+def verificar_pago_entrante(user_email):
+    # Si el usuario vuelve de Mercado Pago, la URL tendrá parámetros de éxito
+    params = st.query_params
+    if params.get("status") == "approved" and st.session_state.user_data:
+        # Activamos el Plan Pro por 30 días automáticamente
+        venc_pro = (datetime.now() + timedelta(days=30)).date()
+        supabase.table("usuarios").update({
+            "plan": "pro",
+            "vencimiento_pro": str(venc_pro)
+        }).eq("email", user_email).execute()
+        st.success("¡Pago procesado con éxito! Tu Plan Pro está activo por 30 días.")
+        # Limpiamos los parámetros para que no se ejecute dos veces
+        st.query_params.clear()
 
 # ==========================================
 # PANTALLA DE ACCESO
@@ -72,251 +77,155 @@ def pantalla_acceso():
     col1, col2, col3 = st.columns([1, 1.8, 1])
     with col2:
         if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
-        st.markdown("<h3 style='text-align: center;'>Acceso al Sistema</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center;'>Chubut.IA - Jurisprudencia</h3>", unsafe_allow_html=True)
         tab_in, tab_reg = st.tabs(["🔑 Entrar", "📝 Registrarse"])
         
         with tab_in:
-            if not st.session_state.reset_step:
-                email = st.text_input("Email", key="login_email")
-                password = st.text_input("Contraseña", type="password", key="login_pass")
-                
-                if st.button("¿Olvidaste tu contraseña?", type="secondary"):
-                    if email:
-                        try:
-                            supabase.auth.reset_password_email(email)
-                            st.session_state.reset_step = True
-                            st.session_state.reset_email = email
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Error técnico: {e}")
-                    else:
-                        st.warning("Escribí tu email arriba para que podamos enviarte el código de recuperación.")
-                
-                st.write("") 
-                if st.button("Iniciar Sesión", type="primary", use_container_width=True):
-                    try:
-                        res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                        st.session_state.user_data = res.user
-                        st.rerun()
-                    except Exception as e:
-                        st.error("Credenciales incorrectas o email no confirmado.")
-            else:
-                st.info(f"Revisá tu correo ({st.session_state.reset_email}). Te enviamos un código de seguridad.")
-                codigo_otp = st.text_input("Código de recuperación", placeholder="Pegá el código de tu correo acá")
-                nueva_pass = st.text_input("Nueva Contraseña", type="password")
-                
-                if st.button("Confirmar Cambio de Contraseña", type="primary", use_container_width=True):
-                    if len(nueva_pass) >= 6:
-                        try:
-                            supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": codigo_otp, "type": "recovery"})
-                            supabase.auth.update_user({"password": nueva_pass})
-                            st.success("¡Contraseña actualizada con éxito! Ya podés iniciar sesión.")
-                            st.session_state.reset_step = False
-                        except Exception as e:
-                            st.error("El código es incorrecto o ya expiró. Revisá bien el correo.")
-                    else:
-                        st.error("La contraseña debe tener al menos 6 caracteres.")
-                        
-                if st.button("Cancelar / Volver"):
-                    st.session_state.reset_step = False
+            email = st.text_input("Email")
+            password = st.text_input("Contraseña", type="password")
+            if st.button("Iniciar Sesión", type="primary", use_container_width=True):
+                try:
+                    res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                    st.session_state.user_data = res.user
                     st.rerun()
+                except: st.error("Email o contraseña incorrectos.")
 
         with tab_reg:
-            new_user = st.text_input("Nombre / Estudio", placeholder="Ej: Roman_Juridico")
-            new_email = st.text_input("Tu Gmail")
-            new_pass = st.text_input("Contraseña", type="password")
-            confirm_pass = st.text_input("Confirmar Contraseña", type="password")
-            if st.button("Crear Cuenta", use_container_width=True):
-                if new_pass != confirm_pass: st.error("Las contraseñas no coinciden.")
-                else:
-                    try:
-                        supabase.auth.sign_up({"email": new_email, "password": new_pass, "options": {"data": {"display_name": new_user}}})
-                        st.success("¡Cuenta creada! Revisa tu email (Spam incluido).")
-                    except Exception as e: st.error(f"Error: {e}")
+            new_user = st.text_input("Nombre y Apellido")
+            new_email = st.text_input("Correo Electrónico")
+            new_pass = st.text_input("Crea una contraseña", type="password")
+            if st.button("Crear Cuenta y Probar Gratis (7 días)", use_container_width=True):
+                try:
+                    # Cálculo automático de la semana de prueba
+                    venc_trial = (datetime.now() + timedelta(days=7)).date()
+                    supabase.auth.sign_up({"email": new_email, "password": new_pass, "options": {"data": {"display_name": new_user}}})
+                    
+                    supabase.table("usuarios").insert({
+                        "usuario": new_user, "email": new_email, "plan": "gratis",
+                        "vencimiento_trial": str(venc_trial), "historial": {"Nueva Consulta": []}
+                    }).execute()
+                    st.success("¡Cuenta creada! Por favor, confirmá tu email.")
+                except Exception as e: st.error(f"Error: {e}")
 
 # ==========================================
-# PANTALLA DE CHAT
+# PANTALLA DE CHAT (ACCESO CONTROLADO)
 # ==========================================
 def pantalla_chat():
     user = st.session_state.user_data
-    nombre = user.user_metadata.get("display_name", user.email.split("@")[0])
+    verificar_pago_entrante(user.email) # <--- Automatización de pago al volver
     
     db_res = supabase.table("usuarios").select("*").eq("email", user.email).execute()
+    if not db_res.data:
+        st.error("No se encontró el perfil de usuario.")
+        st.stop()
+
+    datos = db_res.data[0]
+    hoy = datetime.now().date()
     
-    if len(db_res.data) == 0:
-        historial_db = {"Nueva Consulta": []}
-        supabase.table("usuarios").insert({
-            "usuario": nombre, "email": user.email, "consultas": 3, "plan": "gratis", "historial": historial_db
-        }).execute()
-        creditos = 3
-        es_pro = False
-    else:
-        creditos = db_res.data[0]["consultas"]
-        es_pro = db_res.data[0].get("plan") == "pro"
-        historial_db = db_res.data[0].get("historial") or {"Nueva Consulta": []}
+    # LÓGICA DE TIEMPO AUTOMATIZADA
+    es_pro = False
+    if datos.get("plan") == "pro" and datos.get("vencimiento_pro"):
+        venc_pro = datetime.strptime(datos["vencimiento_pro"], "%Y-%m-%d").date()
+        if hoy <= venc_pro: es_pro = True
 
-    if "chat_iniciado" not in st.session_state:
-        st.session_state.sesiones_chat = historial_db
-        st.session_state.sesion_actual = list(historial_db.keys())[-1]
-        st.session_state.chat_iniciado = True
+    esta_en_trial = False
+    if not es_pro and datos.get("vencimiento_trial"):
+        venc_trial = datetime.strptime(datos["vencimiento_trial"], "%Y-%m-%d").date()
+        if hoy <= venc_trial: esta_en_trial = True
 
+    # BLOQUEO POR VENCIMIENTO
+    if not es_pro and not esta_en_trial:
+        st.markdown(f"""
+            <div style="text-align: center; padding: 40px; border: 2px solid #ef4444; border-radius: 15px; background-color: rgba(239, 68, 68, 0.1);">
+                <h2 style="color: #ef4444;">Tu tiempo de acceso ha expirado</h2>
+                <p>Tu semana de prueba gratuita terminó. Activá el Plan Pro para seguir consultando fallos y leyes de Chubut.</p>
+            </div>
+        """, unsafe_allow_html=True)
+        st.link_button("🚀 Activar Acceso Profesional", "https://mpago.la/1f481Uj", use_container_width=True)
+        if st.button("Cerrar Sesión"):
+            supabase.auth.sign_out()
+            st.session_state.user_data = None
+            st.rerun()
+        st.stop()
+
+    # SIDEBAR Y GESTIÓN DE CHATS
     with st.sidebar:
         if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
         st.divider()
-        st.markdown(f"👤 **{nombre}**")
+        st.markdown(f"👤 **{datos['usuario']}**")
+        if es_pro: st.warning(f"💎 PRO ACTIVO hasta {datos['vencimiento_pro']}")
+        else: st.info(f"🎁 TRIAL ACTIVO hasta {datos['vencimiento_trial']}")
         
-        if es_pro:
-            st.warning("💎 **PLAN PRO ACTIVADO**")
-        else:
-            st.success(f"Consultas restantes: **{creditos}**")
-            if creditos <= 0:
-                st.error("🚫 Consultas agotadas")
-                link_mp = "https://mpago.la/1f481Uj" 
-                st.link_button("Suscribirme ahora", link_mp, type="primary", use_container_width=True)
-
         st.divider()
         if st.button("➕ Nueva Consulta", type="primary", use_container_width=True):
-            nueva_id = f"Consulta {len(st.session_state.sesiones_chat) + 1}"
-            st.session_state.sesiones_chat[nueva_id] = []
+            nueva_id = f"Consulta {len(datos['historial']) + 1}"
+            datos['historial'][nueva_id] = []
             st.session_state.sesion_actual = nueva_id
-            supabase.table("usuarios").update({"historial": st.session_state.sesiones_chat}).eq("email", user.email).execute()
+            supabase.table("usuarios").update({"historial": datos['historial']}).eq("email", user.email).execute()
             st.rerun()
 
-        st.write("") 
+        # Historial de chats (Funcionalidad Completa)
+        historial = datos.get("historial") or {"Nueva Consulta": []}
+        if "sesion_actual" not in st.session_state: st.session_state.sesion_actual = list(historial.keys())[-1]
         
-        lista_chats = list(st.session_state.sesiones_chat.keys())
-        
-        for nombre_chat in reversed(lista_chats):
-            col_btn, col_del = st.columns([0.8, 0.2]) 
-            
-            with col_btn:
-                prefijo = "🟢" if nombre_chat == st.session_state.sesion_actual else "📄"
-                if st.button(f"{prefijo} {nombre_chat}", key=f"btn_{nombre_chat}", use_container_width=True):
-                    st.session_state.sesion_actual = nombre_chat
-                    st.rerun()
-
-            with col_del:
-                if st.button("❌", key=f"del_{nombre_chat}", help="Borrar", use_container_width=True):
-                    del st.session_state.sesiones_chat[nombre_chat]
-                    
-                    if st.session_state.sesion_actual == nombre_chat:
-                        if len(st.session_state.sesiones_chat) > 0:
-                            st.session_state.sesion_actual = list(st.session_state.sesiones_chat.keys())[-1]
-                        else:
-                            st.session_state.sesiones_chat = {"Nueva Consulta": []}
-                            st.session_state.sesion_actual = "Nueva Consulta"
-                    
-                    supabase.table("usuarios").update({
-                        "historial": st.session_state.sesiones_chat
-                    }).eq("email", user.email).execute()
-                    
-                    st.rerun()
+        for chat_id in reversed(list(historial.keys())):
+            if st.button(f"📄 {chat_id}", key=f"btn_{chat_id}", use_container_width=True):
+                st.session_state.sesion_actual = chat_id
+                st.rerun()
         
         st.divider()
         if st.button("Cerrar Sesión", use_container_width=True):
             supabase.auth.sign_out()
             st.session_state.user_data = None
-            if "chat_iniciado" in st.session_state: del st.session_state["chat_iniciado"]
             st.rerun()
 
-    # ACÁ ESTÁ LA MAGIA QUE DESCARGA LA BASE DE DATOS (VERSIÓN DIRECTA INFALIBLE)
-    @st.cache_resource(show_spinner="Descargando y conectando el cerebro jurídico (esto puede tardar unos minutos)...")
+    # MOTOR DE IA Y BASE DE DATOS
+    @st.cache_resource(show_spinner="Conectando con la jurisprudencia de Chubut...")
     def load_ia():
         if not os.path.exists("MI_BASE_VECTORIAL"):
             import gdown
-            import zipfile
-            
-            # Usamos el formato de descarga directa con tu ID para evitar cualquier error de parseo
             file_id = "188KmlAHVcg4bbomeXG7Z6mP6dUm0Fqju"
-            url_directa = f"https://drive.google.com/uc?id={file_id}"
-            
-            # Eliminamos el fuzzy=True que causaba el error
-            gdown.download(url_directa, "base.zip", quiet=False)
-            
-            with zipfile.ZipFile("base.zip", 'r') as zip_ref:
-                zip_ref.extractall()
-                    
+            gdown.download(f"https://drive.google.com/uc?id={file_id}", "base.zip", quiet=False)
+            with zipfile.ZipFile("base.zip", 'r') as zr: zr.extractall()
         emb = OpenAIEmbeddings(model="text-embedding-3-small")
         vdb = Chroma(persist_directory="MI_BASE_VECTORIAL", embedding_function=emb)
         return vdb, ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
 
     vdb, llm = load_ia()
-    historial_actual = st.session_state.sesiones_chat.get(st.session_state.sesion_actual, [])
-    
-    if len(historial_actual) == 0:
-        st.markdown(f"""
-            <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 60vh; text-align: center;">
-                <h3 style="color: #9CA3AF; font-weight: 400; margin-bottom: 5px;">Hola, {nombre}</h3>
-                <h1 style="font-size: 3rem; font-weight: 600; margin-top: 0;">¿En qué puedo ayudarte hoy?</h1>
-            </div>
-        """, unsafe_allow_html=True)
+    chat_actual = historial.get(st.session_state.sesion_actual, [])
+
+    # INTERFAZ DE CHAT
+    if not chat_actual:
+        st.markdown(f'<div style="text-align: center; margin-top: 20vh; color: #6B7280;"><h1>¿En qué puedo asistirlo hoy, Dr.?</h1></div>', unsafe_allow_html=True)
     else:
-        st.markdown(f"### {st.session_state.sesion_actual}") 
-        for m in historial_actual:
+        for m in chat_actual:
             with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    if prompt := st.chat_input("¿Qué duda legal tenés sobre Chubut?"):
-        if creditos > 0 or es_pro:
-            historial_actual.append({"role": "user", "content": prompt})
-            st.rerun() 
-        else:
-            st.error("No te quedan consultas. Suscribite al plan Pro para continuar.")
-            
-    if len(historial_actual) > 0 and historial_actual[-1]["role"] == "user":
-        prompt = historial_actual[-1]["content"]
-        
+    if prompt := st.chat_input("Consulte sobre fallos, leyes o jurisprudencia..."):
+        chat_actual.append({"role": "user", "content": prompt})
+        st.rerun()
+
+    if chat_actual and chat_actual[-1]["role"] == "user":
         with st.chat_message("assistant"):
-            with st.spinner("Buscando fallos..."):
-                docs = vdb.similarity_search(prompt, k=4)
-                ctx = "\n\n".join([d.page_content for d in docs])
+            with st.spinner("Buscando en la base de datos legal..."):
+                docs = vdb.similarity_search(chat_actual[-1]["content"], k=4)
+                contexto = "\n\n".join([d.page_content for d in docs])
+                instruccion = f"Sos Chubut.IA. Usá este contexto de fallos de Chubut: {contexto}. Respondé con rigor legal, usando emojis y citando fuentes."
                 
-                instruccion_base = f"""Sos Chubut.IA, asistente jurídico de Chubut.
-Contexto: {ctx}
-
-REGLAS DE FORMATO:
-1. VISUALIZACIÓN DE FALLOS: Si el usuario pide jurisprudencia o un fallo, usá EXACTAMENTE este formato visual con emojis y viñetas:
-
-📌 **[Título del Fallo]**
-* 📅 **Fecha del Fallo:** [Fecha]
-* 📖 **Cita Textual:** "[Extracto clave]"
-* 📝 **Resumen de los Hechos:** [Resumen]
-* ⚖️ **Resolución:** [Decisión]
-* 🔗 **Ver fallo oficial:** https://pdf.ai/
-
-2. ANÁLISIS: Respondé fluido en párrafos si es una consulta general o un análisis. Si dentro del análisis citás un fallo, aplicá estrictamente la estructura de viñetas y emojis de la Regla 1.
-"""
-                msgs_ia = [SystemMessage(content=instruccion_base)]
+                mensajes = [SystemMessage(content=instruccion)]
+                for m in chat_actual:
+                    mensajes.append(HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"]))
                 
-                for m in historial_actual[:-1]:
-                    role = HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"])
-                    msgs_ia.append(role)
+                respuesta = llm.invoke(mensajes)
+                st.markdown(respuesta.content)
+                chat_actual.append({"role": "assistant", "content": respuesta.content})
                 
-                msgs_ia.append(HumanMessage(content=prompt))
-                
-                res = llm.invoke(msgs_ia)
-                st.markdown(res.content)
-                historial_actual.append({"role": "assistant", "content": res.content})
-                
-                nuevo_conteo = creditos if es_pro else creditos - 1
-                
-                sesion_vieja = st.session_state.sesion_actual
-                if sesion_vieja.startswith("Consulta ") and len(historial_actual) == 2:
-                    try:
-                        tit_p = f"Resume esto en 3 palabras: {prompt}"
-                        nuevo_titulo = llm.invoke([HumanMessage(content=tit_p)]).content.replace('"', '').strip()
-                        st.session_state.sesiones_chat[nuevo_titulo] = st.session_state.sesiones_chat.pop(sesion_vieja)
-                        st.session_state.sesion_actual = nuevo_titulo
-                    except: pass
-                else:
-                    st.session_state.sesiones_chat[st.session_state.sesion_actual] = historial_actual
-
-                supabase.table("usuarios").update({
-                    "consultas": nuevo_conteo,
-                    "historial": st.session_state.sesiones_chat
-                }).eq("email", user.email).execute()
+                # Actualización automática del historial en Supabase
+                historial[st.session_state.sesion_actual] = chat_actual
+                supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
                 st.rerun()
 
-# --- ARRANQUE ---
+# --- EJECUCIÓN ---
 if st.session_state.user_data is None:
     pantalla_acceso()
 else:
