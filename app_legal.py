@@ -50,7 +50,6 @@ else:
     os.environ["OPENAI_API_KEY"] = OPENAI_KEY
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# 3. ESTADO DE SESIÓN
 if "user_data" not in st.session_state: st.session_state.user_data = None
 
 # ==========================================
@@ -112,11 +111,7 @@ def pantalla_acceso():
                         else:
                             try:
                                 venc_trial = (datetime.now() + timedelta(days=7)).date()
-                                supabase.auth.sign_up({
-                                    "email": new_email, 
-                                    "password": new_pass, 
-                                    "options": {"data": {"display_name": new_user}}
-                                })
+                                supabase.auth.sign_up({"email": new_email, "password": new_pass, "options": {"data": {"display_name": new_user}}})
                                 
                                 supabase.table("usuarios").insert({
                                     "usuario": new_user, "email": new_email, "plan": "gratis",
@@ -141,7 +136,6 @@ def pantalla_chat():
     datos = db_res.data[0]
     hoy = datetime.now().date()
     
-    # FORMATEO DE FECHAS (Día/Mes/Año) PARA MOSTRAR AL USUARIO
     fecha_trial_formateada = ""
     if datos.get("vencimiento_trial"):
         fecha_trial_formateada = datetime.strptime(datos["vencimiento_trial"], "%Y-%m-%d").strftime("%d/%m/%Y")
@@ -150,7 +144,6 @@ def pantalla_chat():
     if datos.get("vencimiento_pro"):
         fecha_pro_formateada = datetime.strptime(datos["vencimiento_pro"], "%Y-%m-%d").strftime("%d/%m/%Y")
 
-    # VERIFICACIÓN DE ACCESOS
     es_pro = False
     if datos.get("plan") == "pro" and datos.get("vencimiento_pro"):
         venc_pro = datetime.strptime(datos["vencimiento_pro"], "%Y-%m-%d").date()
@@ -161,7 +154,6 @@ def pantalla_chat():
         venc_trial = datetime.strptime(datos["vencimiento_trial"], "%Y-%m-%d").date()
         if hoy <= venc_trial: esta_en_trial = True
 
-    # PANTALLA DE BLOQUEO (FIN DE TRIAL)
     if not es_pro and not esta_en_trial:
         st.markdown(f"""
             <div style="text-align: center; padding: 40px; border: 2px solid #ef4444; border-radius: 15px; background-color: rgba(239, 68, 68, 0.1);">
@@ -182,7 +174,6 @@ def pantalla_chat():
         st.divider()
         st.markdown(f"👤 **{datos['usuario']}**")
         
-        # INDICADOR DE PLAN CON FECHA FORMATEADA
         if es_pro: 
             st.warning(f"💎 Plan PRO hasta el {fecha_pro_formateada}")
         else: 
@@ -190,13 +181,13 @@ def pantalla_chat():
         
         st.divider()
         
-        # UPSELL DE VENTA CONSTANTE (CAJA ESTILIZADA)
+        # UPSELL CAJA INTEGRADA (Mejor contraste)
         if not es_pro:
             st.markdown("""
-                <div style="border: 2px solid #1E3A8A; border-radius: 10px; padding: 15px; background-color: #f8fafc; text-align: center; margin-bottom: 10px;">
-                    <h4 style="color: #1E3A8A; margin-top: 0; margin-bottom: 5px;">🚀 Plan Mensual Pro</h4>
-                    <p style="font-size: 1.2rem; font-weight: bold; color: #0f172a; margin: 0;">$9.500 ARS <span style="font-size: 0.9rem; font-weight: normal;">/ mes</span></p>
-                    <p style="font-size: 0.85rem; color: #475569; margin-top: 5px; margin-bottom: 0;">Consultas ilimitadas de jurisprudencia.</p>
+                <div style="border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 15px; background-color: rgba(255, 255, 255, 0.05); text-align: center; margin-bottom: 10px;">
+                    <h4 style="color: #60A5FA; margin-top: 0; margin-bottom: 5px;">🚀 Plan Mensual Pro</h4>
+                    <p style="font-size: 1.2rem; font-weight: bold; color: white; margin: 0;">$9.500 ARS <span style="font-size: 0.9rem; font-weight: normal; color: #9CA3AF;">/ mes</span></p>
+                    <p style="font-size: 0.85rem; color: #9CA3AF; margin-top: 5px; margin-bottom: 0;">Consultas ilimitadas de jurisprudencia.</p>
                 </div>
             """, unsafe_allow_html=True)
             st.link_button("💳 Pasarme a Pro", "https://mpago.la/1f481Uj", type="primary", use_container_width=True)
@@ -209,14 +200,30 @@ def pantalla_chat():
             supabase.table("usuarios").update({"historial": datos['historial']}).eq("email", user.email).execute()
             st.rerun()
 
-        # HISTORIAL DE CHATS
+        st.write("") 
+        
+        # HISTORIAL DE CHATS (Con botón de borrar y marcador verde)
         historial = datos.get("historial") or {"Nueva Consulta": []}
         if "sesion_actual" not in st.session_state: st.session_state.sesion_actual = list(historial.keys())[-1]
         
         for chat_id in reversed(list(historial.keys())):
-            if st.button(f"📄 {chat_id}", key=f"btn_{chat_id}", use_container_width=True):
-                st.session_state.sesion_actual = chat_id
-                st.rerun()
+            col_btn, col_del = st.columns([0.8, 0.2]) 
+            with col_btn:
+                prefijo = "🟢" if chat_id == st.session_state.sesion_actual else "📄"
+                if st.button(f"{prefijo} {chat_id}", key=f"btn_{chat_id}", use_container_width=True):
+                    st.session_state.sesion_actual = chat_id
+                    st.rerun()
+            with col_del:
+                if st.button("❌", key=f"del_{chat_id}", help="Borrar", use_container_width=True):
+                    del historial[chat_id]
+                    if st.session_state.sesion_actual == chat_id:
+                        if len(historial) > 0:
+                            st.session_state.sesion_actual = list(historial.keys())[-1]
+                        else:
+                            historial = {"Nueva Consulta": []}
+                            st.session_state.sesion_actual = "Nueva Consulta"
+                    supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
+                    st.rerun()
         
         st.divider()
         if st.button("Cerrar Sesión", use_container_width=True):
@@ -224,7 +231,6 @@ def pantalla_chat():
             st.session_state.user_data = None
             st.rerun()
 
-    # MOTOR DE IA (CEREBRO)
     @st.cache_resource(show_spinner="Conectando el cerebro jurídico de Chubut...")
     def load_ia():
         if not os.path.exists("MI_BASE_VECTORIAL"):
@@ -239,7 +245,6 @@ def pantalla_chat():
     vdb, llm = load_ia()
     chat_actual = historial.get(st.session_state.sesion_actual, [])
 
-    # INTERFAZ PRINCIPAL
     if not chat_actual:
         st.markdown(f"""
             <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 60vh; text-align: center;">
@@ -253,7 +258,6 @@ def pantalla_chat():
 
     if prompt := st.chat_input("¿Qué duda legal tenés sobre Chubut?"):
         chat_actual.append({"role": "user", "content": prompt})
-        
         historial[st.session_state.sesion_actual] = chat_actual
         supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
         st.rerun()
@@ -262,26 +266,28 @@ def pantalla_chat():
         with st.chat_message("assistant"):
             with st.spinner("Buscando fallos y jurisprudencia..."):
                 docs = vdb.similarity_search(chat_actual[-1]["content"], k=4)
-                contexto = "\n\n".join([d.page_content for d in docs])
                 
-                # INSTRUCCIONES MEJORADAS (Múltiples fallos, no alucinar links)
+                # REVELACIÓN DE METADATOS: Le pasamos el texto + la info oculta a la IA
+                contexto_partes = []
+                for i, d in enumerate(docs):
+                    contexto_partes.append(f"--- FALLO {i+1} ---\nTexto: {d.page_content}\nDatos ocultos (Metadatos): {d.metadata}")
+                contexto_final = "\n\n".join(contexto_partes)
+                
                 instruccion = f"""Sos Chubut.IA, asistente jurídico de la Provincia de Chubut.
-Basate ÚNICAMENTE en el siguiente contexto legal extraído de la base de datos para responder:
-{contexto}
+Basate ÚNICAMENTE en este contexto extraído de la base de datos (que incluye el texto y sus metadatos):
+{contexto_final}
 
 REGLAS DE FORMATO Y CONTENIDO:
-1. MOSTRAR TODOS LOS FALLOS: El contexto contiene información de varios fallos. Debes analizar todo el texto y mostrar TODOS los fallos que sean relevantes para la consulta. No te limites a uno solo.
-2. DATOS REALES: No inventes fechas, enlaces ni resoluciones. Si un dato no está en el contexto, escribe "No especificado en el documento".
-3. ESTRUCTURA OBLIGATORIA: Para CADA fallo que cites, usa exactamente esta estructura:
+1. MOSTRAR TODOS LOS FALLOS: Analiza todo el texto y muestra TODOS los fallos relevantes encontrados en el contexto. No te limites a uno.
+2. DATOS REALES: Extrae la fecha y el link fuente de la sección "Metadatos". Si no existen, di "No especificado". NUNCA inventes un link ni uses un link de ejemplo como pdf.ai.
+3. ESTRUCTURA OBLIGATORIA: Para CADA fallo, usa exactamente esta estructura:
 
-📌 **[Nombre de la Carátula o Título del Fallo]**
-* 📅 **Fecha del Fallo:** [Fecha real extraída del contexto]
-* 📖 **Cita Textual:** "[El extracto más relevante del fallo]"
-* 📝 **Resumen de los Hechos:** [Breve resumen de la situación]
-* ⚖️ **Resolución:** [Decisión final del tribunal]
-* 🔗 **Fuente:** [Si el contexto incluye un enlace real o número de expediente, ponlo aquí. Si no lo tiene, pon "Enlace no disponible en la base de datos"]
-
-4. ANÁLISIS: Puedes hacer una breve introducción antes de listar los fallos, pero la jurisprudencia siempre debe ir con la estructura de la Regla 3."""
+📌 **[Nombre o Título del Fallo]**
+* 📅 **Fecha del Fallo:** [Fecha real de los metadatos]
+* 📖 **Cita Textual:** "[El extracto más relevante]"
+* 📝 **Resumen de los Hechos:** [Breve resumen]
+* ⚖️ **Resolución:** [Decisión final]
+* 🔗 **Fuente:** [Link real extraído de los metadatos. Si no hay link, pon "Enlace no disponible en la base de datos"]"""
                 
                 mensajes = [SystemMessage(content=instruccion)]
                 for m in chat_actual[:-1]:
@@ -295,11 +301,13 @@ REGLAS DE FORMATO Y CONTENIDO:
                 
                 historial[st.session_state.sesion_actual] = chat_actual
                 
+                # SISTEMA DE TITULADO AUTOMÁTICO RESTAURADO
                 sesion_vieja = st.session_state.sesion_actual
                 if sesion_vieja.startswith("Consulta ") and len(chat_actual) == 2:
                     try:
-                        tit_p = f"Resume esto en 3 palabras: {chat_actual[0]['content']}"
+                        tit_p = f"Resume esta consulta en 3 o 4 palabras: '{chat_actual[0]['content']}'"
                         nuevo_titulo = llm.invoke([HumanMessage(content=tit_p)]).content.replace('"', '').strip()
+                        if nuevo_titulo in historial: nuevo_titulo += " (1)" # Evitar títulos duplicados
                         historial[nuevo_titulo] = historial.pop(sesion_vieja)
                         st.session_state.sesion_actual = nuevo_titulo
                     except: pass
