@@ -219,20 +219,22 @@ def pantalla_chat():
             if "chat_iniciado" in st.session_state: del st.session_state["chat_iniciado"]
             st.rerun()
 
-    # ACÁ ESTÁ LA MAGIA QUE DESCARGA LA BASE DE DATOS
+    # ACÁ ESTÁ LA MAGIA QUE DESCARGA LA BASE DE DATOS (VERSIÓN DIRECTA INFALIBLE)
     @st.cache_resource(show_spinner="Descargando y conectando el cerebro jurídico (esto puede tardar unos minutos)...")
     def load_ia():
         if not os.path.exists("MI_BASE_VECTORIAL"):
             import gdown
             import zipfile
             
-            # 👇👇👇 TU LINK DE GOOGLE DRIVE YA ESTÁ PUESTO ACÁ 👇👇👇
-            link_drive = "https://drive.google.com/file/d/188KmlAHVcg4bbomeXG7Z6mP6dUm0Fqju/view?usp=sharing"
+            # Usamos el formato de descarga directa con tu ID para evitar cualquier error de parseo
+            file_id = "188KmlAHVcg4bbomeXG7Z6mP6dUm0Fqju"
+            url_directa = f"https://drive.google.com/uc?id={file_id}"
             
-            if "drive.google.com" in link_drive:
-                gdown.download(link_drive, "base.zip", quiet=False, fuzzy=True)
-                with zipfile.ZipFile("base.zip", 'r') as zip_ref:
-                    zip_ref.extractall()
+            # Eliminamos el fuzzy=True que causaba el error
+            gdown.download(url_directa, "base.zip", quiet=False)
+            
+            with zipfile.ZipFile("base.zip", 'r') as zip_ref:
+                zip_ref.extractall()
                     
         emb = OpenAIEmbeddings(model="text-embedding-3-small")
         vdb = Chroma(persist_directory="MI_BASE_VECTORIAL", embedding_function=emb)
