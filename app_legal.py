@@ -39,9 +39,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 2. CONEXIÓN A SERVICIOS
-OPENAI_KEY = os.getenv("OPENAI_API_KEY")
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+OPENAI_KEY = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
+SUPABASE_URL = os.getenv("SUPABASE_URL") or st.secrets.get("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY") or st.secrets.get("SUPABASE_KEY")
 
 if not OPENAI_KEY or not SUPABASE_URL or not SUPABASE_KEY:
     st.error("🚨 Error crítico: Faltan variables de configuración en Railway.")
@@ -67,7 +67,7 @@ def verificar_pago_entrante(user_email):
         st.query_params.clear()
 
 # ==========================================
-# PANTALLA DE ACCESO
+# PANTALLA DE ACCESO (CORREGIDA CON ST.FORM)
 # ==========================================
 def pantalla_acceso():
     col1, col2, col3 = st.columns([1, 1.8, 1])
@@ -77,37 +77,42 @@ def pantalla_acceso():
         tab_in, tab_reg = st.tabs(["🔑 Entrar", "📝 Registrarse"])
         
         with tab_in:
-            email = st.text_input("Email")
-            password = st.text_input("Contraseña", type="password")
-            if st.button("Iniciar Sesión", type="primary", use_container_width=True):
-                try:
-                    res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                    st.session_state.user_data = res.user
-                    st.rerun()
-                except: st.error("Email o contraseña incorrectos, o falta confirmar el correo.")
+            with st.form("form_login"):
+                email = st.text_input("Email")
+                password = st.text_input("Contraseña", type="password")
+                btn_login = st.form_submit_button("Iniciar Sesión", use_container_width=True)
+                
+                if btn_login:
+                    try:
+                        res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                        st.session_state.user_data = res.user
+                        st.rerun()
+                    except: 
+                        st.error("Email o contraseña incorrectos, o falta confirmar el correo.")
 
         with tab_reg:
-            new_user = st.text_input("Nombre y Apellido")
-            new_email = st.text_input("Correo Electrónico")
-            new_pass = st.text_input("Crea una contraseña", type="password")
-            confirm_pass = st.text_input("Confirmar contraseña", type="password")
-            
-            if st.button("Crear Cuenta", use_container_width=True):
-                if not new_user or not new_email or not new_pass or not confirm_pass:
-                    st.warning("⚠️ Por favor, completá todos los campos.")
-                elif new_pass != confirm_pass:
-                    st.error("❌ Las contraseñas no coinciden. Intentá de nuevo.")
-                elif len(new_pass) < 6:
-                    st.error("❌ La contraseña debe tener al menos 6 caracteres.")
-                else:
-                    with st.spinner("Verificando datos..."):
+            with st.form("form_registro"):
+                new_user = st.text_input("Nombre y Apellido")
+                new_email = st.text_input("Correo Electrónico")
+                new_pass = st.text_input("Crea una contraseña", type="password")
+                confirm_pass = st.text_input("Confirmar contraseña", type="password")
+                btn_reg = st.form_submit_button("Crear Cuenta", use_container_width=True)
+                
+                if btn_reg:
+                    if not new_user or not new_email or not new_pass or not confirm_pass:
+                        st.warning("⚠️ Por favor, completá todos los campos.")
+                    elif new_pass != confirm_pass:
+                        st.error("❌ Las contraseñas no coinciden. Intentá de nuevo.")
+                    elif len(new_pass) < 6:
+                        st.error("❌ La contraseña debe tener al menos 6 caracteres.")
+                    else:
                         check_user = supabase.table("usuarios").select("usuario").eq("usuario", new_user).execute()
                         check_email = supabase.table("usuarios").select("email").eq("email", new_email).execute()
                         
                         if len(check_user.data) > 0:
                             st.error("⚠️ Ese Nombre ya está en uso. Por favor, elegí otro.")
                         elif len(check_email.data) > 0:
-                            st.error("⚠️ Este correo electrónico ya está registrado. Iniciá sesión o usá otro.")
+                            st.error("⚠️ Este correo electrónico ya está registrado.")
                         else:
                             try:
                                 venc_trial = (datetime.now() + timedelta(days=7)).date()
@@ -118,8 +123,9 @@ def pantalla_acceso():
                                     "vencimiento_trial": str(venc_trial), "historial": {"Nueva Consulta": []}
                                 }).execute()
                                 
-                                st.success("✅ ¡Cuenta creada con éxito! Por favor, revisá tu correo y confirmá tu email para poder iniciar sesión.")
-                            except Exception as e: st.error(f"Error técnico: {e}")
+                                st.success("✅ ¡Cuenta creada con éxito! Por favor, revisá tu correo y confirmá tu email.")
+                            except Exception as e: 
+                                st.error(f"Error técnico: {e}")
 
 # ==========================================
 # PANTALLA DE CHAT
@@ -181,7 +187,6 @@ def pantalla_chat():
         
         st.divider()
         
-        # UPSELL CAJA INTEGRADA (Mejor contraste)
         if not es_pro:
             st.markdown("""
                 <div style="border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 15px; background-color: rgba(255, 255, 255, 0.05); text-align: center; margin-bottom: 10px;">
@@ -202,7 +207,6 @@ def pantalla_chat():
 
         st.write("") 
         
-        # HISTORIAL DE CHATS (Con botón de borrar y marcador verde)
         historial = datos.get("historial") or {"Nueva Consulta": []}
         if "sesion_actual" not in st.session_state: st.session_state.sesion_actual = list(historial.keys())[-1]
         
@@ -266,28 +270,24 @@ def pantalla_chat():
         with st.chat_message("assistant"):
             with st.spinner("Buscando fallos y jurisprudencia..."):
                 docs = vdb.similarity_search(chat_actual[-1]["content"], k=4)
+                contexto = "\n\n".join([d.page_content for d in docs])
                 
-                # REVELACIÓN DE METADATOS: Le pasamos el texto + la info oculta a la IA
-                contexto_partes = []
-                for i, d in enumerate(docs):
-                    contexto_partes.append(f"--- FALLO {i+1} ---\nTexto: {d.page_content}\nDatos ocultos (Metadatos): {d.metadata}")
-                contexto_final = "\n\n".join(contexto_partes)
-                
+                # INSTRUCCIONES ESTRICTAS PARA EXTRAER LINKS REALES
                 instruccion = f"""Sos Chubut.IA, asistente jurídico de la Provincia de Chubut.
-Basate ÚNICAMENTE en este contexto extraído de la base de datos (que incluye el texto y sus metadatos):
-{contexto_final}
+Basate ÚNICAMENTE en este contexto extraído de la base de datos:
+{contexto}
 
 REGLAS DE FORMATO Y CONTENIDO:
-1. MOSTRAR TODOS LOS FALLOS: Analiza todo el texto y muestra TODOS los fallos relevantes encontrados en el contexto. No te limites a uno.
-2. DATOS REALES: Extrae la fecha y el link fuente de la sección "Metadatos". Si no existen, di "No especificado". NUNCA inventes un link ni uses un link de ejemplo como pdf.ai.
+1. MOSTRAR TODOS LOS FALLOS: Analiza todo el texto y muestra TODOS los fallos relevantes.
+2. DATOS REALES: El texto de cada fallo incluye su fecha y un enlace al PDF oficial. Busca detalladamente esos dos datos dentro de los documentos que te pasé. NO inventes enlaces ni uses links de ejemplo.
 3. ESTRUCTURA OBLIGATORIA: Para CADA fallo, usa exactamente esta estructura:
 
 📌 **[Nombre o Título del Fallo]**
-* 📅 **Fecha del Fallo:** [Fecha real de los metadatos]
+* 📅 **Fecha del Fallo:** [Fecha real extraída del texto del fallo]
 * 📖 **Cita Textual:** "[El extracto más relevante]"
 * 📝 **Resumen de los Hechos:** [Breve resumen]
 * ⚖️ **Resolución:** [Decisión final]
-* 🔗 **Fuente:** [Link real extraído de los metadatos. Si no hay link, pon "Enlace no disponible en la base de datos"]"""
+* 🔗 **Ver fallo oficial:** [Enlace real extraído del texto del fallo]"""
                 
                 mensajes = [SystemMessage(content=instruccion)]
                 for m in chat_actual[:-1]:
@@ -301,13 +301,12 @@ REGLAS DE FORMATO Y CONTENIDO:
                 
                 historial[st.session_state.sesion_actual] = chat_actual
                 
-                # SISTEMA DE TITULADO AUTOMÁTICO RESTAURADO
                 sesion_vieja = st.session_state.sesion_actual
                 if sesion_vieja.startswith("Consulta ") and len(chat_actual) == 2:
                     try:
                         tit_p = f"Resume esta consulta en 3 o 4 palabras: '{chat_actual[0]['content']}'"
                         nuevo_titulo = llm.invoke([HumanMessage(content=tit_p)]).content.replace('"', '').strip()
-                        if nuevo_titulo in historial: nuevo_titulo += " (1)" # Evitar títulos duplicados
+                        if nuevo_titulo in historial: nuevo_titulo += " (1)" 
                         historial[nuevo_titulo] = historial.pop(sesion_vieja)
                         st.session_state.sesion_actual = nuevo_titulo
                     except: pass
