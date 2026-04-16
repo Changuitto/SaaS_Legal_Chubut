@@ -39,12 +39,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. INICIALIZAR COOKIES Y SERVICIOS
-@st.cache_resource
-def get_cookie_manager():
-    return stx.CookieManager()
-
-cookie_manager = get_cookie_manager()
+# 2. INICIALIZAR COOKIES Y SERVICIOS (Solución cartel amarillo)
+cookie_manager = stx.CookieManager()
 
 OPENAI_KEY = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL") or st.secrets.get("SUPABASE_URL")
@@ -153,14 +149,15 @@ def pantalla_acceso():
                                 st.error(f"Error técnico: {e}")
 
 # ==========================================
-# CEREBRO GLOBAL DE LA IA
+# CEREBRO GLOBAL DE LA IA (Solución cartel rojo)
 # ==========================================
 @st.cache_resource(show_spinner="Conectando el cerebro jurídico de Chubut...")
 def load_ia():
     if not os.path.exists("MI_BASE_VECTORIAL"):
         import gdown
         file_id = "1pw_mJl3qyESz9WFq9XC2Q7MRBZiOTp59" 
-        gdown.download(f"https://drive.google.com/uc?id={file_id}", "base.zip", quiet=False)
+        # Modificado para usar id= en lugar del link para evitar el bloqueo de Google
+        gdown.download(id=file_id, output="base.zip", quiet=False)
         with zipfile.ZipFile("base.zip", 'r') as zr: zr.extractall()
     emb = OpenAIEmbeddings(model="text-embedding-3-small")
     vdb = Chroma(persist_directory="MI_BASE_VECTORIAL", embedding_function=emb)
@@ -241,7 +238,6 @@ def pantalla_chat():
     datos = db_res.data[0]
     hoy = datetime.now().date()
     
-    # Verificación de Plan
     es_pro = False
     if datos.get("plan") == "pro" and datos.get("vencimiento_pro"):
         venc_pro = datetime.strptime(datos["vencimiento_pro"], "%Y-%m-%d").date()
@@ -319,7 +315,6 @@ def pantalla_chat():
                 st.markdown(respuesta.content)
                 chat_actual.append({"role": "assistant", "content": respuesta.content})
                 
-                # Título automático
                 if st.session_state.sesion_actual.startswith("Consulta ") and len(chat_actual) == 2:
                     tit_p = f"Resume esto en 3 palabras: {chat_actual[0]['content']}"
                     nuevo_titulo = llm.invoke([HumanMessage(content=tit_p)]).content.replace('"', '').strip()
