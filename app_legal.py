@@ -38,13 +38,26 @@ st.markdown("""
             padding: 1.2rem; margin-bottom: 1rem; margin-left: auto;
         }
         div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-user"]) * { color: white !important; }
+        .botones-sugerencia button {
+            border: 1px solid #4B5563 !important;
+            border-radius: 10px !important;
+            padding: 10px !important;
+            text-align: center !important;
+            background-color: transparent !important;
+            color: #9CA3AF !important;
+            transition: all 0.2s !important;
+        }
+        .botones-sugerencia button:hover {
+            border-color: #60A5FA !important;
+            color: white !important;
+            background-color: rgba(96, 165, 250, 0.1) !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
 # 2. SISTEMA BLINDADO DE COOKIES
 cookie_manager = stx.CookieManager()
 
-# Leemos las cookies directamente
 access_token = cookie_manager.get(cookie="supa_access")
 refresh_token = cookie_manager.get(cookie="supa_refresh")
 galleta_invitado = cookie_manager.get(cookie="chubut_invitado")
@@ -85,7 +98,7 @@ if galleta_invitado:
 def generar_instruccion_ia(contexto):
     return f"""Sos Chubut.IA, un asistente jurídico estrictamente enfocado en la Provincia de Chubut.
 TU ÚNICA MISIÓN ES MOSTRAR JURISPRUDENCIA.
-REGLA DE ORO: Si el usuario te saluda, te hace charla, o te pide cosas fuera del ámbito legal (ej: películas, recetas, noticias), DEBES NEGARTE CORTÉSMENTE y recordarle que solo estás capacitado para buscar fallos legales de Chubut.
+REGLA DE ORO: Si el usuario te saluda, te hace charla, o te pide cosas fuera del ámbito legal, DEBES NEGARTE CORTÉSMENTE y recordarle que solo estás capacitado para buscar fallos legales de Chubut.
 
 CONTEXTO DE LA BASE DE DATOS:
 {contexto}
@@ -99,6 +112,16 @@ Si la consulta es legal, debes estructurar CADA fallo encontrado exactamente as�
 * 📝 **Resumen de los Hechos:** [Breve resumen]
 * ⚖️ **Resolución:** [Decisión final]
 * 🔗 **Ver fallo oficial:** [Pega la 'URL' tal cual, sin corchetes ni formato markdown. Solo el link crudo]"""
+
+# ==========================================
+# DESCARGO DE RESPONSABILIDAD LEGAL (DISCLAIMER)
+# ==========================================
+def mostrar_disclaimer():
+    st.markdown("""
+        <div style="font-size: 0.75rem; color: #6B7280; text-align: center; margin-top: 30px; padding: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+            ⚠️ <i>Chubut.IA es una herramienta de asistencia basada en IA. Los fallos mostrados deben ser verificados en sus fuentes oficiales y no reemplazan el asesoramiento legal profesional.</i>
+        </div>
+    """, unsafe_allow_html=True)
 
 # ==========================================
 # AUTOMATIZACIÓN DE PAGO
@@ -140,8 +163,6 @@ def pantalla_acceso():
                         with st.spinner("Autenticando y guardando sesión segura..."):
                             try:
                                 res = supabase.auth.sign_in_with_password({"email": email.strip(), "password": password})
-                                
-                                # GUARDAMOS EL PASE VIP
                                 vencimiento_sesion = datetime.now() + timedelta(days=30)
                                 cookie_manager.set("supa_access", res.session.access_token, expires_at=vencimiento_sesion, key="set_acc_log")
                                 cookie_manager.set("supa_refresh", res.session.refresh_token, expires_at=vencimiento_sesion, key="set_ref_log")
@@ -205,7 +226,7 @@ def pantalla_acceso():
 def load_ia():
     if not os.path.exists("MI_BASE_VECTORIAL"):
         
-        # 👇👇👇 PEGÁ EL ENLACE QUE COPIASTE DE GITHUB RELEASES ACÁ 👇👇👇
+        # ACÁ ESTÁ TU LINK DIRECTO AL ARCHIVO ZIP EN GITHUB
         url_directa = "https://github.com/ChubutIA/SaaS_Legal_Chubut/releases/download/v1.0/MI_BASE_VECTORIAL.zip"
         
         urllib.request.urlretrieve(url_directa, "base.zip")
@@ -233,17 +254,53 @@ def pantalla_invitado():
         if st.button("🔑 Iniciar Sesión / Registrarse", type="primary", use_container_width=True):
             st.session_state.show_login = True
             st.rerun()
+        mostrar_disclaimer()
 
     if not st.session_state.guest_history:
         st.markdown("""
-            <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 50vh; text-align: center;">
+            <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 40vh; text-align: center;">
                 <h1 style="font-size: 3rem; font-weight: 600;">Probalo gratis, sin registrarte.</h1>
                 <p style="font-size: 1.2rem; color: gray;">Hacé una consulta legal sobre Chubut para ver cómo funciona.</p>
             </div>
         """, unsafe_allow_html=True)
+        
+        # BOTONES DE BÚSQUEDA RÁPIDA
+        st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0.9rem; margin-top: 20px;'>💡 Pruebe con alguna de estas sugerencias:</p>", unsafe_allow_html=True)
+        st.markdown("<div class='botones-sugerencia'>", unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        if c1.button("⚖️ Fallos sobre cuota alimentaria", use_container_width=True):
+            st.session_state.guest_history.append({"role": "user", "content": "Mostrame fallos recientes sobre cuota alimentaria"})
+            st.rerun()
+        if c2.button("🚗 Jurisprudencia en accidentes de tránsito", use_container_width=True):
+            st.session_state.guest_history.append({"role": "user", "content": "Mostrame jurisprudencia sobre accidentes de tránsito"})
+            st.rerun()
+        c3, c4 = st.columns(2)
+        if c3.button("🏢 Fallos por despidos sin causa", use_container_width=True):
+            st.session_state.guest_history.append({"role": "user", "content": "Busca fallos sobre despidos sin causa justificada"})
+            st.rerun()
+        if c4.button("🏥 Mala praxis médica", use_container_width=True):
+            st.session_state.guest_history.append({"role": "user", "content": "Busca fallos relacionados con mala praxis médica"})
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+            
     else:
         for m in st.session_state.guest_history:
             with st.chat_message(m["role"]): st.markdown(m["content"])
+            
+        # BOTÓN DE EXPORTAR
+        st.markdown("---")
+        chat_str = f"--- CHUBUT.IA | REPORTE LEGAL ---\nFecha: {datetime.now().strftime('%d/%m/%Y')}\n\n"
+        for msg in st.session_state.guest_history:
+            rol = "👤 Usuario" if msg["role"] == "user" else "🤖 Chubut.IA"
+            chat_str += f"{rol}:\n{msg['content']}\n\n{'-'*40}\n\n"
+            
+        st.download_button(
+            label="📄 Exportar chat a texto (TXT)",
+            data=chat_str,
+            file_name="Reporte_ChubutIA.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
 
     if st.session_state.consultas_gastadas >= 1:
         st.warning("⚠️ Consumiste tu única consulta gratuita.")
@@ -262,7 +319,6 @@ def pantalla_invitado():
                 contexto_final = "\n\n".join([f"📅 FECHA: {d.metadata.get('fecha_completa')}\n🔗 URL: {d.metadata.get('link_pdf')}\n📄 CONTENIDO:\n{d.page_content}" for d in docs])
                 
                 mensajes = [SystemMessage(content=generar_instruccion_ia(contexto_final))]
-                
                 for m in st.session_state.guest_history[:-1]:
                     mensajes.append(HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"]))
                 mensajes.append(HumanMessage(content=st.session_state.guest_history[-1]["content"]))
@@ -273,7 +329,6 @@ def pantalla_invitado():
                 
                 st.session_state.consultas_gastadas += 1
                 vencimiento = datetime.now() + timedelta(days=365)
-                # LLAVE ÚNICA ACÁ TAMBIÉN
                 cookie_manager.set("chubut_invitado", str(st.session_state.consultas_gastadas), expires_at=vencimiento, key="set_inv")
                 
                 st.markdown("---")
@@ -318,7 +373,8 @@ def pantalla_chat():
                 <p>Tu semana de prueba gratuita terminó. Activá el Plan Pro para seguir consultando jurisprudencia de Chubut.</p>
             </div>
         """, unsafe_allow_html=True)
-        # 👇 ACÁ ESTÁ EL PRIMER LINK DE MERCADO PAGO A REEMPLAZAR 👇
+        
+        # ACÁ ESTÁ TU PRIMER LINK DE MERCADO PAGO
         st.link_button("🚀 Activar Plan Pro ($6.500 ARS)", "https://mpago.la/2nDaBRx", use_container_width=True)
         
         if st.button("Cerrar Sesión"):
@@ -350,7 +406,8 @@ def pantalla_chat():
                     <p style="font-size: 0.85rem; color: #9CA3AF; margin-top: 5px; margin-bottom: 0;">Consultas ilimitadas de jurisprudencia.</p>
                 </div>
             """, unsafe_allow_html=True)
-            # 👇 ACÁ ESTÁ EL SEGUNDO LINK DE MERCADO PAGO A REEMPLAZAR 👇
+            
+            # ACÁ ESTÁ TU SEGUNDO LINK DE MERCADO PAGO
             st.link_button("💳 Pasarme a Pro", "https://mpago.la/2nDaBRx", type="primary", use_container_width=True)
             st.divider()
 
@@ -386,19 +443,64 @@ def pantalla_chat():
             time.sleep(1)
             st.session_state.user_data = None
             st.rerun()
+            
+        mostrar_disclaimer()
 
     chat_actual = historial.get(st.session_state.sesion_actual, [])
     
     if not chat_actual:
         st.markdown(f"""
-            <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 60vh; text-align: center;">
+            <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 40vh; text-align: center;">
                 <h3 style="color: #9CA3AF; font-weight: 400; margin-bottom: 5px;">Hola, {datos['usuario']}</h3>
                 <h1 style="font-size: 3rem; font-weight: 600; margin-top: 0;">¿En qué puedo ayudarte hoy?</h1>
             </div>
         """, unsafe_allow_html=True)
+        
+        # BOTONES DE BÚSQUEDA RÁPIDA LOGUEADOS
+        st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0.9rem; margin-top: 20px;'>💡 Pruebe con alguna de estas sugerencias:</p>", unsafe_allow_html=True)
+        st.markdown("<div class='botones-sugerencia'>", unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        if c1.button("⚖️ Fallos sobre cuota alimentaria", key="btn_sug1", use_container_width=True):
+            chat_actual.append({"role": "user", "content": "Mostrame fallos recientes sobre cuota alimentaria"})
+            historial[st.session_state.sesion_actual] = chat_actual
+            supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
+            st.rerun()
+        if c2.button("🚗 Jurisprudencia en accidentes de tránsito", key="btn_sug2", use_container_width=True):
+            chat_actual.append({"role": "user", "content": "Mostrame jurisprudencia sobre accidentes de tránsito"})
+            historial[st.session_state.sesion_actual] = chat_actual
+            supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
+            st.rerun()
+        c3, c4 = st.columns(2)
+        if c3.button("🏢 Fallos por despidos sin causa", key="btn_sug3", use_container_width=True):
+            chat_actual.append({"role": "user", "content": "Busca fallos sobre despidos sin causa justificada"})
+            historial[st.session_state.sesion_actual] = chat_actual
+            supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
+            st.rerun()
+        if c4.button("🏥 Mala praxis médica", key="btn_sug4", use_container_width=True):
+            chat_actual.append({"role": "user", "content": "Busca fallos relacionados con mala praxis médica"})
+            historial[st.session_state.sesion_actual] = chat_actual
+            supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+        
     else:
         for m in chat_actual:
             with st.chat_message(m["role"]): st.markdown(m["content"])
+            
+        # BOTÓN DE EXPORTAR LOGUEADOS
+        st.markdown("---")
+        chat_str = f"--- CHUBUT.IA | REPORTE LEGAL ---\nConsulta: {st.session_state.sesion_actual}\nFecha: {datetime.now().strftime('%d/%m/%Y')}\n\n"
+        for msg in chat_actual:
+            rol = "👤 Usuario" if msg["role"] == "user" else "🤖 Chubut.IA"
+            chat_str += f"{rol}:\n{msg['content']}\n\n{'-'*40}\n\n"
+            
+        st.download_button(
+            label="📄 Exportar chat a texto (TXT)",
+            data=chat_str,
+            file_name=f"Reporte_{st.session_state.sesion_actual}.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
 
     if prompt := st.chat_input("¿En qué puedo ayudarte hoy?"):
         chat_actual.append({"role": "user", "content": prompt})
