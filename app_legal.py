@@ -6,7 +6,7 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import os
 import zipfile
 import streamlit as st
-import extra_streamlit_components as stx  # <-- NUEVA LIBRERÍA DE COOKIES
+import extra_streamlit_components as stx
 from datetime import datetime, timedelta
 from supabase import create_client, Client
 from langchain_chroma import Chroma
@@ -40,7 +40,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 2. INICIALIZAR COOKIES Y SERVICIOS
-@st.cache_resource(experimental_allow_widgets=True)
+@st.cache_resource
 def get_cookie_manager():
     return stx.CookieManager()
 
@@ -62,7 +62,7 @@ if "user_data" not in st.session_state: st.session_state.user_data = None
 if "show_login" not in st.session_state: st.session_state.show_login = False
 if "guest_history" not in st.session_state: st.session_state.guest_history = []
 
-# LEER COOKIE DE CONSULTAS (Si no existe, empieza en 0)
+# LEER COOKIE DE CONSULTAS
 galleta_consultas = cookie_manager.get(cookie="consultas_invitado")
 if galleta_consultas is None:
     consultas_gastadas = 0
@@ -112,7 +112,7 @@ def pantalla_acceso():
                             st.session_state.show_login = False
                             st.rerun()
                         except Exception as e:
-                            st.error("❌ Credenciales incorrectas. Verificá tu correo y contraseña.")
+                            st.error("❌ Credenciales incorrectas.")
                 else:
                     st.warning("⚠️ Completá ambos campos.")
 
@@ -137,7 +137,7 @@ def pantalla_acceso():
                         check_email = supabase.table("usuarios").select("email").eq("email", new_email.strip()).execute()
                         
                         if len(check_user.data) > 0:
-                            st.error("⚠️ Ese Nombre ya está en uso. Por favor, elegí otro.")
+                            st.error("⚠️ Ese Nombre ya está en uso.")
                         elif len(check_email.data) > 0:
                             st.error("⚠️ Este correo electrónico ya está registrado.")
                         else:
@@ -148,18 +148,17 @@ def pantalla_acceso():
                                     "usuario": new_user, "email": new_email.strip(), "plan": "gratis",
                                     "vencimiento_trial": str(venc_trial), "historial": {"Nueva Consulta": []}
                                 }).execute()
-                                st.success("✅ ¡Cuenta creada con éxito! Ya podés iniciar sesión en la pestaña 'Entrar'.")
+                                st.success("✅ ¡Cuenta creada! Ya podés iniciar sesión en 'Entrar'.")
                             except Exception as e: 
                                 st.error(f"Error técnico: {e}")
 
 # ==========================================
 # CEREBRO GLOBAL DE LA IA
 # ==========================================
-@st.cache_resource(show_spinner="Conectando el cerebro jurídico de Chubut (Puede demorar unos segundos)...")
+@st.cache_resource(show_spinner="Conectando el cerebro jurídico de Chubut...")
 def load_ia():
     if not os.path.exists("MI_BASE_VECTORIAL"):
         import gdown
-        # 👇👇👇 ACÁ VA TU ID DE GOOGLE DRIVE 👇👇👇
         file_id = "1pw_mJl3qyESz9WFq9XC2Q7MRBZiOTp59" 
         gdown.download(f"https://drive.google.com/uc?id={file_id}", "base.zip", quiet=False)
         with zipfile.ZipFile("base.zip", 'r') as zr: zr.extractall()
@@ -170,7 +169,7 @@ def load_ia():
 vdb, llm = load_ia()
 
 # ==========================================
-# PANTALLA MODO INVITADO (Con Cookies)
+# PANTALLA MODO INVITADO
 # ==========================================
 def pantalla_invitado():
     global consultas_gastadas
@@ -182,8 +181,6 @@ def pantalla_invitado():
         st.markdown("👤 **Modo Invitado**")
         st.info(f"🎁 Consultas de prueba: {consultas_restantes} / 5")
         st.divider()
-        st.markdown("<p style='font-size: 0.9rem; color: gray;'>Para guardar tu historial y tener acceso sin límites, creá tu cuenta gratuita.</p>", unsafe_allow_html=True)
-        
         if st.button("🔑 Iniciar Sesión / Registrarse", type="primary", use_container_width=True):
             st.session_state.show_login = True
             st.rerun()
@@ -191,8 +188,7 @@ def pantalla_invitado():
     if not st.session_state.guest_history:
         st.markdown("""
             <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 50vh; text-align: center;">
-                <h3 style="color: #9CA3AF; font-weight: 400; margin-bottom: 5px;">Bienvenido a Chubut.IA</h3>
-                <h1 style="font-size: 3rem; font-weight: 600; margin-top: 0;">Probalo gratis, sin registrarte.</h1>
+                <h1 style="font-size: 3rem; font-weight: 600;">Probalo gratis, sin registrarte.</h1>
                 <p style="font-size: 1.2rem; color: gray;">Hacé una consulta legal para ver cómo funciona.</p>
             </div>
         """, unsafe_allow_html=True)
@@ -200,10 +196,9 @@ def pantalla_invitado():
         for m in st.session_state.guest_history:
             with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    # Verificador de Límite mediante Cookie
     if consultas_gastadas >= 5:
-        st.warning("⚠️ Alcanzaste el límite de 5 consultas gratuitas de prueba.")
-        if st.button("🚀 Crear cuenta gratis ahora para continuar", type="primary", use_container_width=True):
+        st.warning("⚠️ Alcanzaste el límite de 5 consultas gratuitas.")
+        if st.button("🚀 Crear cuenta gratis para continuar", type="primary", use_container_width=True):
             st.session_state.show_login = True
             st.rerun()
     else:
@@ -213,65 +208,40 @@ def pantalla_invitado():
 
     if st.session_state.guest_history and st.session_state.guest_history[-1]["role"] == "user":
         with st.chat_message("assistant"):
-            with st.spinner("Buscando jurisprudencia en modo prueba..."):
+            with st.spinner("Buscando jurisprudencia..."):
                 docs = vdb.similarity_search(st.session_state.guest_history[-1]["content"], k=6)
-                
                 contexto_partes = []
                 for i, d in enumerate(docs):
                     link_real = d.metadata.get('link_pdf', 'Enlace no disponible')
                     fecha_real = d.metadata.get('fecha_completa', 'Fecha no detectada')
-                    contexto_partes.append(f"--- FALLO {i+1} ---\n📅 FECHA EXACTA: {fecha_real}\n🔗 URL DEL PDF: {link_real}\n📄 CONTENIDO:\n{d.page_content}")
+                    contexto_partes.append(f"--- FALLO {i+1} ---\n📅 FECHA: {fecha_real}\n🔗 URL: {link_real}\n📄 CONTENIDO:\n{d.page_content}")
                 
                 contexto_final = "\n\n".join(contexto_partes)
-                instruccion = f"""Sos Chubut.IA, asistente jurídico de Chubut. Basate en esto:
-{contexto_final}
-
-Muestra todos los fallos encontrados usando esta estructura:
-📌 **[Nombre del Fallo]**
-* 📅 **Fecha:** [La fecha de los metadatos]
-* 📖 **Cita Textual:** "[Extracto relevante]"
-* 📝 **Resumen:** [Resumen breve]
-* ⚖️ **Resolución:** [Decisión]
-* 🔗 **Ver fallo oficial:** https://revista.profesionaldelainformacion.com/index.php/EPI/article/view/epi.2014.nov.04"""
-                
+                instruccion = f"Sos Chubut.IA jurídico. Basate en esto:\n{contexto_final}\n\nUsa estructura de viñetas, emojis y el link crudo al final."
                 mensajes = [SystemMessage(content=instruccion)]
                 for m in st.session_state.guest_history[:-1]:
                     mensajes.append(HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"]))
-                
                 mensajes.append(HumanMessage(content=st.session_state.guest_history[-1]["content"]))
                 
                 respuesta = llm.invoke(mensajes)
                 st.markdown(respuesta.content)
                 st.session_state.guest_history.append({"role": "assistant", "content": respuesta.content})
                 
-                # ACTUALIZAR COOKIE (Duración: 1 año)
                 nuevas_consultas = consultas_gastadas + 1
                 cookie_manager.set("consultas_invitado", str(nuevas_consultas), expires_at=datetime.now() + timedelta(days=365))
                 st.rerun()
 
 # ==========================================
-# PANTALLA DE CHAT (USUARIOS LOGUEADOS)
+# PANTALLA DE CHAT (LOGUEADOS)
 # ==========================================
 def pantalla_chat():
     user = st.session_state.user_data
     verificar_pago_entrante(user.email)
-    
     db_res = supabase.table("usuarios").select("*").eq("email", user.email).execute()
-    if not db_res.data:
-        st.error("Error al cargar perfil.")
-        st.stop()
-
     datos = db_res.data[0]
     hoy = datetime.now().date()
     
-    fecha_trial_formateada = ""
-    if datos.get("vencimiento_trial"):
-        fecha_trial_formateada = datetime.strptime(datos["vencimiento_trial"], "%Y-%m-%d").strftime("%d/%m/%Y")
-
-    fecha_pro_formateada = ""
-    if datos.get("vencimiento_pro"):
-        fecha_pro_formateada = datetime.strptime(datos["vencimiento_pro"], "%Y-%m-%d").strftime("%d/%m/%Y")
-
+    # Verificación de Plan
     es_pro = False
     if datos.get("plan") == "pro" and datos.get("vencimiento_pro"):
         venc_pro = datetime.strptime(datos["vencimiento_pro"], "%Y-%m-%d").date()
@@ -283,12 +253,7 @@ def pantalla_chat():
         if hoy <= venc_trial: esta_en_trial = True
 
     if not es_pro and not esta_en_trial:
-        st.markdown(f"""
-            <div style="text-align: center; padding: 40px; border: 2px solid #ef4444; border-radius: 15px; background-color: rgba(239, 68, 68, 0.1);">
-                <h2 style="color: #ef4444;">Tu tiempo de acceso ha expirado</h2>
-                <p>Tu semana de prueba gratuita terminó. Activá el Plan Pro para seguir consultando jurisprudencia de Chubut.</p>
-            </div>
-        """, unsafe_allow_html=True)
+        st.error("Tu tiempo de acceso ha expirado.")
         st.link_button("🚀 Activar Plan Pro ($9.500 ARS)", "https://mpago.la/1f481Uj", use_container_width=True)
         if st.button("Cerrar Sesión"):
             supabase.auth.sign_out()
@@ -300,56 +265,30 @@ def pantalla_chat():
         if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
         st.divider()
         st.markdown(f"👤 **{datos['usuario']}**")
-        
-        if es_pro: 
-            st.warning(f"💎 Plan PRO hasta el {fecha_pro_formateada}")
-        else: 
-            st.info(f"🎁 Prueba Gratis hasta el {fecha_trial_formateada}")
-        
+        if es_pro: st.warning("💎 Plan PRO Activo")
+        else: st.info("🎁 Prueba Gratis Activa")
         st.divider()
-        
-        if not es_pro:
-            st.markdown("""
-                <div style="border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 15px; background-color: rgba(255, 255, 255, 0.05); text-align: center; margin-bottom: 10px;">
-                    <h4 style="color: #60A5FA; margin-top: 0; margin-bottom: 5px;">🚀 Plan Mensual Pro</h4>
-                    <p style="font-size: 1.2rem; font-weight: bold; color: white; margin: 0;">$9.500 ARS <span style="font-size: 0.9rem; font-weight: normal; color: #9CA3AF;">/ mes</span></p>
-                    <p style="font-size: 0.85rem; color: #9CA3AF; margin-top: 5px; margin-bottom: 0;">Consultas ilimitadas de jurisprudencia.</p>
-                </div>
-            """, unsafe_allow_html=True)
-            st.link_button("💳 Pasarme a Pro", "https://mpago.la/1f481Uj", type="primary", use_container_width=True)
-            st.divider()
-
         if st.button("➕ Nueva Consulta", type="primary", use_container_width=True):
             nueva_id = f"Consulta {len(datos['historial']) + 1}"
             datos['historial'][nueva_id] = []
             st.session_state.sesion_actual = nueva_id
             supabase.table("usuarios").update({"historial": datos['historial']}).eq("email", user.email).execute()
             st.rerun()
-
-        st.write("") 
         
         historial = datos.get("historial") or {"Nueva Consulta": []}
         if "sesion_actual" not in st.session_state: st.session_state.sesion_actual = list(historial.keys())[-1]
-        
         for chat_id in reversed(list(historial.keys())):
-            col_btn, col_del = st.columns([0.8, 0.2]) 
+            col_btn, col_del = st.columns([0.8, 0.2])
             with col_btn:
-                prefijo = "🟢" if chat_id == st.session_state.sesion_actual else "📄"
-                if st.button(f"{prefijo} {chat_id}", key=f"btn_{chat_id}", use_container_width=True):
+                if st.button(f"{'🟢' if chat_id == st.session_state.sesion_actual else '📄'} {chat_id}", key=f"btn_{chat_id}", use_container_width=True):
                     st.session_state.sesion_actual = chat_id
                     st.rerun()
             with col_del:
-                if st.button("❌", key=f"del_{chat_id}", help="Borrar", use_container_width=True):
+                if st.button("❌", key=f"del_{chat_id}"):
                     del historial[chat_id]
-                    if st.session_state.sesion_actual == chat_id:
-                        if len(historial) > 0:
-                            st.session_state.sesion_actual = list(historial.keys())[-1]
-                        else:
-                            historial = {"Nueva Consulta": []}
-                            st.session_state.sesion_actual = "Nueva Consulta"
+                    st.session_state.sesion_actual = list(historial.keys())[-1] if historial else "Nueva Consulta"
                     supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
                     st.rerun()
-        
         st.divider()
         if st.button("Cerrar Sesión", use_container_width=True):
             supabase.auth.sign_out()
@@ -357,19 +296,10 @@ def pantalla_chat():
             st.rerun()
 
     chat_actual = historial.get(st.session_state.sesion_actual, [])
+    for m in chat_actual:
+        with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    if not chat_actual:
-        st.markdown(f"""
-            <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 60vh; text-align: center;">
-                <h3 style="color: #9CA3AF; font-weight: 400; margin-bottom: 5px;">Hola, {datos['usuario']}</h3>
-                <h1 style="font-size: 3rem; font-weight: 600; margin-top: 0;">¿En qué puedo ayudarte hoy?</h1>
-            </div>
-        """, unsafe_allow_html=True)
-    else:
-        for m in chat_actual:
-            with st.chat_message(m["role"]): st.markdown(m["content"])
-
-    if prompt := st.chat_input("¿Qué duda legal tenés sobre Chubut?"):
+    if prompt := st.chat_input("¿Qué duda legal tenés?"):
         chat_actual.append({"role": "user", "content": prompt})
         historial[st.session_state.sesion_actual] = chat_actual
         supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
@@ -377,55 +307,24 @@ def pantalla_chat():
 
     if chat_actual and chat_actual[-1]["role"] == "user":
         with st.chat_message("assistant"):
-            with st.spinner("Buscando fallos y jurisprudencia..."):
+            with st.spinner("Buscando fallos..."):
                 docs = vdb.similarity_search(chat_actual[-1]["content"], k=6)
-                
-                contexto_partes = []
-                for i, d in enumerate(docs):
-                    link_real = d.metadata.get('link_pdf', 'Enlace no disponible')
-                    fecha_real = d.metadata.get('fecha_completa', 'Fecha no detectada')
-                    contexto_partes.append(f"--- FALLO {i+1} ---\n📅 FECHA EXACTA: {fecha_real}\n🔗 URL DEL PDF: {link_real}\n📄 CONTENIDO:\n{d.page_content}")
-                
-                contexto_final = "\n\n".join(contexto_partes)
-                
-                instruccion = f"""Sos Chubut.IA, asistente jurídico de la Provincia de Chubut.
-TU ÚNICA MISIÓN ES MOSTRAR LA JURISPRUDENCIA.
-
-DOCUMENTOS OBTENIDOS DE LA BASE DE DATOS:
-{contexto_final}
-
-REGLAS ESTRICTAS PARA RESPONDER:
-1. Analiza los documentos y muestra TODOS los fallos recuperados.
-2. ESTRUCTURA OBLIGATORIA para CADA fallo:
-
-📌 **[Nombre o Título del Fallo]**
-* 📅 **Fecha del Fallo:** [Copia la 'FECHA EXACTA' de los metadatos].
-* 📖 **Cita Textual:** "[Extracto más relevante]"
-* 📝 **Resumen de los Hechos:** [Breve resumen]
-* ⚖️ **Resolución:** [Decisión final]
-* 🔗 **Ver fallo oficial:** [Pega EXACTAMENTE la 'URL DEL PDF'. NO uses formato markdown, NO pongas el link entre corchetes o paréntesis. Solo pega el texto de la URL para que se vea como un link normal]"""
-                
+                contexto_final = "\n\n".join([f"📅 FECHA: {d.metadata.get('fecha_completa')}\n🔗 URL: {d.metadata.get('link_pdf')}\n📄 CONTENIDO:\n{d.page_content}" for d in docs])
+                instruccion = f"Sos Chubut.IA jurídico. Contexto:\n{contexto_final}\n\nUsa viñetas, emojis y links crudos."
                 mensajes = [SystemMessage(content=instruccion)]
                 for m in chat_actual[:-1]:
                     mensajes.append(HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"]))
-                
                 mensajes.append(HumanMessage(content=chat_actual[-1]["content"]))
-                
                 respuesta = llm.invoke(mensajes)
                 st.markdown(respuesta.content)
                 chat_actual.append({"role": "assistant", "content": respuesta.content})
                 
-                historial[st.session_state.sesion_actual] = chat_actual
-                
-                sesion_vieja = st.session_state.sesion_actual
-                if sesion_vieja.startswith("Consulta ") and len(chat_actual) == 2:
-                    try:
-                        tit_p = f"Resume esta consulta en 3 o 4 palabras: '{chat_actual[0]['content']}'"
-                        nuevo_titulo = llm.invoke([HumanMessage(content=tit_p)]).content.replace('"', '').strip()
-                        if nuevo_titulo in historial: nuevo_titulo += " (1)" 
-                        historial[nuevo_titulo] = historial.pop(sesion_vieja)
-                        st.session_state.sesion_actual = nuevo_titulo
-                    except: pass
+                # Título automático
+                if st.session_state.sesion_actual.startswith("Consulta ") and len(chat_actual) == 2:
+                    tit_p = f"Resume esto en 3 palabras: {chat_actual[0]['content']}"
+                    nuevo_titulo = llm.invoke([HumanMessage(content=tit_p)]).content.replace('"', '').strip()
+                    historial[nuevo_titulo] = historial.pop(st.session_state.sesion_actual)
+                    st.session_state.sesion_actual = nuevo_titulo
 
                 supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
                 st.rerun()
