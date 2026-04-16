@@ -55,12 +55,19 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. SISTEMA BLINDADO DE COOKIES
+# 2. SISTEMA BLINDADO DE COOKIES CON PEAJE PARA EL F5
 cookie_manager = stx.CookieManager()
 
-access_token = cookie_manager.get(cookie="supa_access")
-refresh_token = cookie_manager.get(cookie="supa_refresh")
-galleta_invitado = cookie_manager.get(cookie="chubut_invitado")
+# Obligamos a la app a esperar a que el navegador mande TODAS las cookies
+mis_cookies = cookie_manager.get_all()
+if mis_cookies is None:
+    st.info("🔄 Sincronizando sesión segura...")
+    st.stop()
+
+# Leemos las cookies directamente del paquete seguro
+access_token = mis_cookies.get("supa_access")
+refresh_token = mis_cookies.get("supa_refresh")
+galleta_invitado = mis_cookies.get("chubut_invitado")
 
 # 3. VARIABLES DE ENTORNO Y SERVICIOS
 OPENAI_KEY = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
@@ -225,10 +232,7 @@ def pantalla_acceso():
 @st.cache_resource(show_spinner="Conectando el cerebro jurídico de Chubut (Puede demorar unos minutos)...")
 def load_ia():
     if not os.path.exists("MI_BASE_VECTORIAL"):
-        
-        # ACÁ ESTÁ TU LINK DIRECTO AL ARCHIVO ZIP EN GITHUB
         url_directa = "https://github.com/ChubutIA/SaaS_Legal_Chubut/releases/download/v1.0/MI_BASE_VECTORIAL.zip"
-        
         urllib.request.urlretrieve(url_directa, "base.zip")
         with zipfile.ZipFile("base.zip", 'r') as zr: 
             zr.extractall()
@@ -319,6 +323,7 @@ def pantalla_invitado():
                 contexto_final = "\n\n".join([f"📅 FECHA: {d.metadata.get('fecha_completa')}\n🔗 URL: {d.metadata.get('link_pdf')}\n📄 CONTENIDO:\n{d.page_content}" for d in docs])
                 
                 mensajes = [SystemMessage(content=generar_instruccion_ia(contexto_final))]
+                
                 for m in st.session_state.guest_history[:-1]:
                     mensajes.append(HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"]))
                 mensajes.append(HumanMessage(content=st.session_state.guest_history[-1]["content"]))
@@ -374,7 +379,6 @@ def pantalla_chat():
             </div>
         """, unsafe_allow_html=True)
         
-        # ACÁ ESTÁ TU PRIMER LINK DE MERCADO PAGO
         st.link_button("🚀 Activar Plan Pro ($6.500 ARS)", "https://mpago.la/2nDaBRx", use_container_width=True)
         
         if st.button("Cerrar Sesión"):
@@ -407,7 +411,6 @@ def pantalla_chat():
                 </div>
             """, unsafe_allow_html=True)
             
-            # ACÁ ESTÁ TU SEGUNDO LINK DE MERCADO PAGO
             st.link_button("💳 Pasarme a Pro", "https://mpago.la/2nDaBRx", type="primary", use_container_width=True)
             st.divider()
 
