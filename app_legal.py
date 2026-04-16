@@ -7,6 +7,7 @@ import os
 import zipfile
 import urllib.request
 import time  
+import json 
 import streamlit as st
 import extra_streamlit_components as stx
 from datetime import datetime, timedelta
@@ -60,7 +61,6 @@ st.markdown("""
 # ==========================================
 cookie_manager = stx.CookieManager(key="gestor_chubut")
 
-# A. Motores de guardado a prueba de bugs (Siempre quedan en pantalla)
 if "set_refresh_token" in st.session_state:
     vencimiento = datetime.now() + timedelta(days=30)
     cookie_manager.set("chubut_refresh", st.session_state.set_refresh_token, expires_at=vencimiento, key="set_ref_root")
@@ -75,7 +75,6 @@ if "set_invitado" in st.session_state:
     cookie_manager.set("chubut_invitado", str(st.session_state.set_invitado), expires_at=vencimiento_inv, key="set_inv_root")
     del st.session_state.set_invitado
 
-# B. Peaje de espera estricto para el F5
 mis_cookies = cookie_manager.get_all()
 if mis_cookies is None:
     st.markdown("<h3 style='text-align: center; color: gray; margin-top: 20vh;'>🔄 Sincronizando entorno seguro...</h3>", unsafe_allow_html=True)
@@ -95,7 +94,6 @@ else:
     os.environ["OPENAI_API_KEY"] = OPENAI_KEY
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# --- RECUPERACIÓN DE SESIÓN (EL FIX DEL F5) ---
 if "user_data" not in st.session_state: 
     st.session_state.user_data = None
 
@@ -105,7 +103,6 @@ if token_guardado and st.session_state.user_data is None:
     try:
         res = supabase.auth.refresh_session(token_guardado)
         st.session_state.user_data = res.user
-        # Mantenemos vivo el token
         st.session_state.set_refresh_token = res.session.refresh_token
     except Exception:
         pass 
@@ -139,10 +136,21 @@ Si la consulta es legal, debes estructurar CADA fallo encontrado exactamente as�
 * ⚖️ **Resolución:** [Decisión final]
 * 🔗 **Ver fallo oficial:** [Pega la 'URL' tal cual, sin corchetes ni formato markdown. Solo el link crudo]"""
 
+# ==========================================
+# DESCARGO DE RESPONSABILIDAD LEGAL Y SOPORTE
+# ==========================================
 def mostrar_disclaimer():
     st.markdown("""
         <div style="font-size: 0.75rem; color: #6B7280; text-align: center; margin-top: 30px; padding: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
             ⚠️ <i>Chubut.IA es una herramienta de asistencia basada en IA. Los fallos mostrados deben ser verificados en sus fuentes oficiales y no reemplazan el asesoramiento legal profesional.</i>
+        </div>
+    """, unsafe_allow_html=True)
+
+def mostrar_soporte():
+    st.markdown("""
+        <div style="text-align: center; font-size: 0.8rem; color: #9CA3AF; margin-top: 10px; padding-bottom: 15px;">
+            ¿Necesitás ayuda? Contactá al soporte:<br>
+            <a href="mailto:chubutiaoficial@gmail.com" style="color: #60A5FA; text-decoration: none; font-weight: bold;">📧 chubutiaoficial@gmail.com</a>
         </div>
     """, unsafe_allow_html=True)
 
@@ -187,7 +195,7 @@ def pantalla_acceso():
                                 st.session_state.temp_user = res.user
                                 st.session_state.set_refresh_token = res.session.refresh_token
                                 st.session_state.login_exitoso = True
-                                st.rerun() # Esto dispara el guardado en la raíz
+                                st.rerun()
                             except Exception as e:
                                 st.error(f"❌ Error al iniciar sesión. Verificá tus credenciales o si confirmaste tu email.")
                     else:
@@ -237,6 +245,11 @@ def pantalla_acceso():
                                 st.success("✅ ¡Cuenta creada con éxito! POR FAVOR: Revisá tu correo electrónico (y tu carpeta de Spam) para confirmar tu cuenta antes de iniciar sesión.")
                             except Exception as e: 
                                 st.error(f"Error técnico: {e}")
+                                
+        # Mostramos el soporte debajo de los formularios de acceso
+        st.write("")
+        st.write("")
+        mostrar_soporte()
 
 # ==========================================
 # CEREBRO GLOBAL (DESCARGA DIRECTA DE GITHUB RELEASES)
@@ -244,7 +257,6 @@ def pantalla_acceso():
 @st.cache_resource(show_spinner="Conectando el cerebro jurídico de Chubut (Puede demorar unos minutos)...")
 def load_ia():
     if not os.path.exists("MI_BASE_VECTORIAL"):
-        # EL LINK ESTÁ PEGADO AUTOMÁTICAMENTE ACÁ 👇
         url_directa = "https://github.com/ChubutIA/SaaS_Legal_Chubut/releases/download/v1.0/MI_BASE_VECTORIAL.zip"
         urllib.request.urlretrieve(url_directa, "base.zip")
         with zipfile.ZipFile("base.zip", 'r') as zr: 
@@ -272,6 +284,7 @@ def pantalla_invitado():
             st.session_state.show_login = True
             st.rerun()
         mostrar_disclaimer()
+        mostrar_soporte()
 
     if not st.session_state.guest_history:
         st.markdown("""
@@ -345,7 +358,7 @@ def pantalla_invitado():
                 
                 st.session_state.consultas_gastadas += 1
                 st.session_state.set_invitado = st.session_state.consultas_gastadas
-                st.rerun() # Dispara el guardado firme en la raíz
+                st.rerun() 
 
 # ==========================================
 # PANTALLA DE CHAT (LOGUEADOS)
@@ -383,7 +396,6 @@ def pantalla_chat():
             </div>
         """, unsafe_allow_html=True)
         
-        # EL LINK DE MERCADOPAGO ESTÁ PEGADO ACÁ 👇
         st.link_button("🚀 Activar Plan Pro ($6.500 ARS)", "https://mpago.la/2nDaBRx", use_container_width=True)
         
         if st.button("Cerrar Sesión"):
@@ -391,6 +403,9 @@ def pantalla_chat():
             st.session_state.del_tokens = True
             st.session_state.user_data = None
             st.rerun()
+            
+        st.write("")
+        mostrar_soporte()
         st.stop()
 
     with st.sidebar:
@@ -414,7 +429,6 @@ def pantalla_chat():
                 </div>
             """, unsafe_allow_html=True)
             
-            # EL OTRO LINK DE MERCADOPAGO ESTÁ ACÁ 👇
             st.link_button("💳 Pasarme a Pro", "https://mpago.la/2nDaBRx", type="primary", use_container_width=True)
             st.divider()
 
@@ -450,6 +464,7 @@ def pantalla_chat():
             st.rerun()
             
         mostrar_disclaimer()
+        mostrar_soporte()
 
     chat_actual = historial.get(st.session_state.sesion_actual, [])
     
