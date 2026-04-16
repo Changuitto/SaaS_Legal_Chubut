@@ -148,21 +148,25 @@ def pantalla_acceso():
 # ==========================================
 # CEREBRO GLOBAL DE LA IA (DESCARGA DE DRIVE)
 # ==========================================
-@st.cache_resource(show_spinner="Conectando el cerebro jurídico de Chubut...")
+@st.cache_resource(show_spinner="Conectando el cerebro jurídico de Chubut (Puede demorar unos minutos)...")
 def load_ia():
     if not os.path.exists("MI_BASE_VECTORIAL"):
         import gdown
         # ID de tu nuevo archivo MI_BASE_VECTORIAL.zip
         file_id = "1UdL0oJCkWw57t-LSLRmYUTzSrAs4ruMS" 
-        # Descarga limpia ahora que el archivo es Público
-        gdown.download(id=file_id, output="base.zip", quiet=False)
-        with zipfile.ZipFile("base.zip", 'r') as zr: zr.extractall()
+        
+        # MODO TOPADORA ACTIVADO (Rompe el cartel de virus de Google)
+        url_fuerza = f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
+        gdown.download(url=url_fuerza, output="base.zip", quiet=False, fuzzy=True)
+        
+        with zipfile.ZipFile("base.zip", 'r') as zr: 
+            zr.extractall()
     
     emb = OpenAIEmbeddings(model="text-embedding-3-small")
     vdb = Chroma(persist_directory="MI_BASE_VECTORIAL", embedding_function=emb)
     return vdb, ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
 
-# ESTA ES LA LÍNEA QUE FALTABA PARA ACTIVAR EL CEREBRO
+# LÍNEA QUE ACTIVA EL CEREBRO
 vdb, llm = load_ia()
 
 # ==========================================
