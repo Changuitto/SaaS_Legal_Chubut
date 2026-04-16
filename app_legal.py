@@ -39,7 +39,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. INICIALIZAR COOKIES Y SERVICIOS (Solución cartel amarillo)
+# 2. INICIALIZAR COOKIES Y SERVICIOS
 cookie_manager = stx.CookieManager()
 
 OPENAI_KEY = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
@@ -149,27 +149,23 @@ def pantalla_acceso():
                                 st.error(f"Error técnico: {e}")
 
 # ==========================================
-# CEREBRO GLOBAL DE LA IA (Solución cartel rojo)
+# CEREBRO GLOBAL DE LA IA (MODO TOPADORA)
 # ==========================================
 @st.cache_resource(show_spinner="Conectando el cerebro jurídico de Chubut...")
 def load_ia():
     if not os.path.exists("MI_BASE_VECTORIAL"):
         import gdown
-        
-        # 👇👇👇 PEGÁ EL ID DE TU NUEVO "MI_BASE_VECTORIAL.zip" ACÁ 👇👇👇
-        file_id = "1UdL0oJCKwW57t-LSLRmYUTzSrAs4ruMS" 
-        
-        # El Modo Topadora (fuzzy=True) rompe la barrera del escáner de virus de Google
+        # Tu ID de Drive ya está inyectado acá:
+        file_id = "1UdL0oJCkWw57t-LSLRmYUTzSrAs4ruMS" 
         url_fuerza = f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
         gdown.download(url=url_fuerza, output="base.zip", quiet=False, fuzzy=True)
-        
-        with zipfile.ZipFile("base.zip", 'r') as zr: 
-            zr.extractall()
-            
+        with zipfile.ZipFile("base.zip", 'r') as zr: zr.extractall()
     emb = OpenAIEmbeddings(model="text-embedding-3-small")
     vdb = Chroma(persist_directory="MI_BASE_VECTORIAL", embedding_function=emb)
     return vdb, ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
-    vdb, llm = load_ia()
+
+# LA LÍNEA MÁGICA QUE SOLUCIONA TU ERROR DE "VDB NO DEFINIDO"
+vdb, llm = load_ia()
 
 # ==========================================
 # PANTALLA MODO INVITADO
