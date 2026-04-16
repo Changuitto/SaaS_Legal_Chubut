@@ -246,7 +246,6 @@ def pantalla_acceso():
                             except Exception as e: 
                                 st.error(f"Error técnico: {e}")
                                 
-        # Mostramos el soporte debajo de los formularios de acceso
         st.write("")
         st.write("")
         mostrar_soporte()
@@ -269,16 +268,16 @@ def load_ia():
 vdb, llm = load_ia()
 
 # ==========================================
-# PANTALLA MODO INVITADO (LÍMITE: 1 CONSULTA)
+# PANTALLA MODO INVITADO (LÍMITE: 5 CONSULTAS)
 # ==========================================
 def pantalla_invitado():
-    consultas_restantes = 1 - st.session_state.consultas_gastadas
+    consultas_restantes = 5 - st.session_state.consultas_gastadas
 
     with st.sidebar:
         if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
         st.divider()
         st.markdown("👤 **Modo Invitado**")
-        st.info(f"🎁 Consulta de prueba: {max(0, consultas_restantes)} / 1")
+        st.info(f"🎁 Consultas de prueba: {max(0, consultas_restantes)} / 5")
         st.divider()
         if st.button("🔑 Iniciar Sesión / Registrarse", type="primary", use_container_width=True):
             st.session_state.show_login = True
@@ -330,8 +329,8 @@ def pantalla_invitado():
             use_container_width=True
         )
 
-    if st.session_state.consultas_gastadas >= 1:
-        st.warning("⚠️ Consumiste tu única consulta gratuita.")
+    if st.session_state.consultas_gastadas >= 5:
+        st.warning("⚠️ Alcanzaste el límite de 5 consultas gratuitas.")
         if st.button("🚀 Crear cuenta gratis de 7 días para continuar", type="primary", use_container_width=True):
             st.session_state.show_login = True
             st.rerun()
