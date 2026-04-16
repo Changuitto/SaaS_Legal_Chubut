@@ -155,15 +155,20 @@ def pantalla_acceso():
 def load_ia():
     if not os.path.exists("MI_BASE_VECTORIAL"):
         import gdown
-        file_id = "1pw_mJl3qyESz9WFq9XC2Q7MRBZiOTp59" 
-        # Modificado para usar id= en lugar del link para evitar el bloqueo de Google
-        gdown.download(id=file_id, output="base.zip", quiet=False)
-        with zipfile.ZipFile("base.zip", 'r') as zr: zr.extractall()
+        
+        # 👇👇👇 PEGÁ EL ID DE TU NUEVO "MI_BASE_VECTORIAL.zip" ACÁ 👇👇👇
+        file_id = "1UdL0oJCKwW57t-LSLRmYUTzSrAs4ruMS" 
+        
+        # El Modo Topadora (fuzzy=True) rompe la barrera del escáner de virus de Google
+        url_fuerza = f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
+        gdown.download(url=url_fuerza, output="base.zip", quiet=False, fuzzy=True)
+        
+        with zipfile.ZipFile("base.zip", 'r') as zr: 
+            zr.extractall()
+            
     emb = OpenAIEmbeddings(model="text-embedding-3-small")
     vdb = Chroma(persist_directory="MI_BASE_VECTORIAL", embedding_function=emb)
     return vdb, ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
-
-vdb, llm = load_ia()
 
 # ==========================================
 # PANTALLA MODO INVITADO
