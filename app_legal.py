@@ -6,6 +6,7 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import os
 import zipfile
 import urllib.request
+import time  # <-- IMPORTANTE PARA EL RETRASO TÁCTICO
 import streamlit as st
 import extra_streamlit_components as stx
 from datetime import datetime, timedelta
@@ -41,12 +42,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 2. SISTEMA BLINDADO DE COOKIES
-cookie_manager = stx.CookieManager(key="gestor_seguro_chubut")
+cookie_manager = stx.CookieManager()
 
-mis_cookies = cookie_manager.get_all()
-if mis_cookies is None:
-    st.markdown("<h4 style='text-align: center; color: gray; margin-top: 50px;'>⏳ Sincronizando entorno seguro...</h4>", unsafe_allow_html=True)
-    st.stop()
+# Leemos las cookies directamente (Sin bloqueos)
+access_token = cookie_manager.get(cookie="supa_access")
+refresh_token = cookie_manager.get(cookie="supa_refresh")
+galleta_invitado = cookie_manager.get(cookie="chubut_invitado")
 
 # 3. VARIABLES DE ENTORNO Y SERVICIOS
 OPENAI_KEY = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
@@ -64,20 +65,20 @@ else:
 if "user_data" not in st.session_state: 
     st.session_state.user_data = None
 
-# Si refrescamos (F5), la memoria se borra, pero el navegador manda la cookie VIP
-if st.session_state.user_data is None and "supa_access" in mis_cookies and "supa_refresh" in mis_cookies:
+# Si apretás F5, la memoria se borra, pero lee tus cookies de pase VIP y te mete de nuevo
+if access_token and refresh_token and st.session_state.user_data is None:
     try:
-        res = supabase.auth.set_session(mis_cookies["supa_access"], mis_cookies["supa_refresh"])
+        res = supabase.auth.set_session(access_token, refresh_token)
         st.session_state.user_data = res.user
     except Exception:
-        pass # Si el token expiró, lo ignoramos
+        pass # Si la cookie expiró, te manda al login normal
 
 if "show_login" not in st.session_state: st.session_state.show_login = False
 if "guest_history" not in st.session_state: st.session_state.guest_history = []
 if "consultas_gastadas" not in st.session_state: st.session_state.consultas_gastadas = 0
 
-if "limite_invitado_chubut" in mis_cookies:
-    st.session_state.consultas_gastadas = max(st.session_state.consultas_gastadas, int(mis_cookies["limite_invitado_chubut"]))
+if galleta_invitado:
+    st.session_state.consultas_gastadas = max(st.session_state.consultas_gastadas, int(galleta_invitado))
 
 # ==========================================
 # INSTRUCCIÓN ESTRICTA PARA LA IA (CHALECO DE FUERZA)
@@ -85,7 +86,7 @@ if "limite_invitado_chubut" in mis_cookies:
 def generar_instruccion_ia(contexto):
     return f"""Sos Chubut.IA, un asistente jurídico estrictamente enfocado en la Provincia de Chubut.
 TU ÚNICA MISIÓN ES MOSTRAR JURISPRUDENCIA.
-REGLA DE ORO: Si el usuario te pide cosas fuera del ámbito legal (ej: películas, recetas, noticias), DEBES NEGARTE CORTÉSMENTE y recordarle que solo estás capacitado para buscar fallos legales de Chubut,puedes saludarlo y cosas normales de una charla, pero despues de eso es si o si tema legal.
+REGLA DE ORO: Si el usuario te saluda, te hace charla, o te pide cosas fuera del ámbito legal (ej: películas, recetas, noticias), DEBES NEGARTE CORTÉSMENTE y recordarle que solo estás capacitado para buscar fallos legales de Chubut.
 
 CONTEXTO DE LA BASE DE DATOS:
 {contexto}
@@ -136,7 +137,7 @@ def pantalla_acceso():
 
             if btn_login:
                 if email and password:
-                    with st.spinner("Autenticando..."):
+                    with st.spinner("Autenticando y guardando sesión segura..."):
                         try:
                             res = supabase.auth.sign_in_with_password({"email": email.strip(), "password": password})
                             
@@ -145,21 +146,16 @@ def pantalla_acceso():
                             cookie_manager.set("supa_access", res.session.access_token, expires_at=vencimiento_sesion)
                             cookie_manager.set("supa_refresh", res.session.refresh_token, expires_at=vencimiento_sesion)
                             
-                            st.session_state.temp_user = res.user
-                            st.session_state.login_exitoso = True
+                            # RETRASO TÁCTICO: Le damos 1 segundo al navegador para que incruste la cookie antes de recargar
+                            time.sleep(1)
+                            
+                            st.session_state.user_data = res.user
+                            st.session_state.show_login = False
+                            st.rerun()
                         except Exception as e:
                             st.error(f"❌ Error al iniciar sesión. Verificá tus credenciales o si confirmaste tu email.")
                 else:
                     st.warning("⚠️ Completá ambos campos.")
-
-            # SISTEMA DE 2 PASOS (Para garantizar que la cookie se guarde)
-            if st.session_state.get("login_exitoso"):
-                st.success("✅ ¡Conexión segura establecida con éxito!")
-                if st.button("👉 Entrar a mi cuenta", type="primary", use_container_width=True):
-                    st.session_state.user_data = st.session_state.temp_user
-                    st.session_state.show_login = False
-                    st.session_state.login_exitoso = False
-                    st.rerun()
 
         with tab_reg:
             with st.form("form_registro", clear_on_submit=False):
@@ -318,8 +314,15 @@ def pantalla_chat():
         """, unsafe_allow_html=True)
         st.link_button("🚀 Activar Plan Pro ($6.500 ARS)", "https://mpago.la/1f481Uj", use_container_width=True)
         
-        if st.button("Cerrar Sesión", use_container_width=True):
-            st.session_state.quiero_salir = True
+        # AL CERRAR SESIÓN DESTRUIMOS EL PASE VIP
+        if st.button("Cerrar Sesión"):
+            supabase.auth.sign_out()
+            cookie_manager.delete("supa_access")
+            cookie_manager.delete("supa_refresh")
+            time.sleep(1) # Retraso táctico para borrar cookies
+            st.session_state.user_data = None
+            st.rerun()
+        st.stop()
 
     with st.sidebar:
         if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
@@ -369,19 +372,14 @@ def pantalla_chat():
                     st.rerun()
         st.divider()
         
-        # SISTEMA DE CERRADO DE SESIÓN SEGURO
+        # AL CERRAR SESIÓN DESTRUIMOS EL PASE VIP
         if st.button("Cerrar Sesión", use_container_width=True):
-            st.session_state.quiero_salir = True
-            
-        if st.session_state.get("quiero_salir"):
             supabase.auth.sign_out()
             cookie_manager.delete("supa_access")
             cookie_manager.delete("supa_refresh")
-            st.success("✅ Pase VIP eliminado.")
-            if st.button("Volver al Inicio", type="primary", use_container_width=True):
-                st.session_state.user_data = None
-                st.session_state.quiero_salir = False
-                st.rerun()
+            time.sleep(1) # Retraso táctico para asegurar borrado
+            st.session_state.user_data = None
+            st.rerun()
 
     chat_actual = historial.get(st.session_state.sesion_actual, [])
     
