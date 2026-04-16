@@ -40,26 +40,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. SISTEMA BLINDADO DE COOKIES ANTI-TRAMPAS
-# La 'key' asegura que el gestor no se reinicie al recargar la página
-cookie_manager = stx.CookieManager(key="gestor_seguro_chubut")
+# 2. INICIALIZAR SERVICIOS
+cookie_manager = stx.CookieManager()
 
-# PEAJE: Obligamos a la página a detenerse hasta que el navegador responda con las cookies reales
-mis_cookies = cookie_manager.get_all()
-if mis_cookies is None:
-    st.markdown("<h4 style='text-align: center; color: gray; margin-top: 50px;'>⏳ Sincronizando entorno seguro...</h4>", unsafe_allow_html=True)
-    st.stop()
-
-# Si llegamos acá, ya tenemos la verdad absoluta del navegador
-if "consultas_gastadas" not in st.session_state:
-    st.session_state.consultas_gastadas = 0
-
-# Leemos nuestra cookie específica (le cambié el nombre para que no haya conflictos con tus pruebas anteriores)
-if "limite_invitado_chubut" in mis_cookies:
-    st.session_state.consultas_gastadas = int(mis_cookies["limite_invitado_chubut"])
-
-
-# 3. VARIABLES DE ENTORNO Y SERVICIOS
 OPENAI_KEY = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL") or st.secrets.get("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY") or st.secrets.get("SUPABASE_KEY")
@@ -71,9 +54,16 @@ else:
     os.environ["OPENAI_API_KEY"] = OPENAI_KEY
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# 3. VARIABLES DE ESTADO
 if "user_data" not in st.session_state: st.session_state.user_data = None
 if "show_login" not in st.session_state: st.session_state.show_login = False
 if "guest_history" not in st.session_state: st.session_state.guest_history = []
+if "consultas_gastadas" not in st.session_state: st.session_state.consultas_gastadas = 0
+
+# INTENTO DE LECTURA DE COOKIE (Como capa extra de seguridad simple)
+galleta = cookie_manager.get(cookie="chubut_invitado")
+if galleta:
+    st.session_state.consultas_gastadas = max(st.session_state.consultas_gastadas, int(galleta))
 
 # ==========================================
 # INSTRUCCIÓN ESTRICTA PARA LA IA (CHALECO DE FUERZA)
@@ -200,16 +190,16 @@ def load_ia():
 vdb, llm = load_ia()
 
 # ==========================================
-# PANTALLA MODO INVITADO
+# PANTALLA MODO INVITADO (LÍMITE: 1 CONSULTA)
 # ==========================================
 def pantalla_invitado():
-    consultas_restantes = 5 - st.session_state.consultas_gastadas
+    consultas_restantes = 1 - st.session_state.consultas_gastadas
 
     with st.sidebar:
         if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
         st.divider()
         st.markdown("👤 **Modo Invitado**")
-        st.info(f"🎁 Consultas de prueba: {max(0, consultas_restantes)} / 5")
+        st.info(f"🎁 Consulta de prueba: {max(0, consultas_restantes)} / 1")
         st.divider()
         if st.button("🔑 Iniciar Sesión / Registrarse", type="primary", use_container_width=True):
             st.session_state.show_login = True
@@ -226,9 +216,9 @@ def pantalla_invitado():
         for m in st.session_state.guest_history:
             with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    if st.session_state.consultas_gastadas >= 5:
-        st.warning("⚠️ Alcanzaste el límite de 5 consultas gratuitas.")
-        if st.button("🚀 Crear cuenta gratis para continuar", type="primary", use_container_width=True):
+    if st.session_state.consultas_gastadas >= 1:
+        st.warning("⚠️ Consumiste tu única consulta gratuita.")
+        if st.button("🚀 Crear cuenta gratis de 7 días para continuar", type="primary", use_container_width=True):
             st.session_state.show_login = True
             st.rerun()
     else:
@@ -252,10 +242,17 @@ def pantalla_invitado():
                 st.markdown(respuesta.content)
                 st.session_state.guest_history.append({"role": "assistant", "content": respuesta.content})
                 
-                # Actualizamos el contador en tiempo real y blindamos la cookie a 1 año
+                # Actualizamos el contador y guardamos el intento de cookie
                 st.session_state.consultas_gastadas += 1
                 vencimiento = datetime.now() + timedelta(days=365)
-                cookie_manager.set("limite_invitado_chubut", str(st.session_state.consultas_gastadas), expires_at=vencimiento)
+                cookie_manager.set("chubut_invitado", str(st.session_state.consultas_gastadas), expires_at=vencimiento)
+                
+                # Botón inmediato para registrarse tras la primera respuesta
+                st.markdown("---")
+                if st.button("🚀 ¡Excelente! Quiero crear mi cuenta gratis para seguir consultando", type="primary", use_container_width=True):
+                    st.session_state.show_login = True
+                    st.rerun()
+                    
                 st.rerun()
 
 # ==========================================
