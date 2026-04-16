@@ -153,7 +153,7 @@ def pantalla_acceso():
                             st.session_state.show_login = False
                             st.rerun()
                         except Exception as e:
-                            st.error(f"❌ Error al iniciar sesión. Verificá tus credenciales o si confirmaste tu email.")
+                            st.error(f"❌ Error técnico de Supabase: {e}")
                 else:
                     st.warning("⚠️ Completá ambos campos.")
 
