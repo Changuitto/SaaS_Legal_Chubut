@@ -146,7 +146,7 @@ def pantalla_acceso():
                                 st.error(f"Error técnico: {e}")
 
 # ==========================================
-# CEREBRO GLOBAL DE LA IA (DESCARGA DE DRIVE)
+# CEREBRO GLOBAL DE LA IA (DESCARGA LIMPIA)
 # ==========================================
 @st.cache_resource(show_spinner="Conectando el cerebro jurídico de Chubut (Puede demorar unos minutos)...")
 def load_ia():
@@ -155,9 +155,8 @@ def load_ia():
         # ID de tu nuevo archivo MI_BASE_VECTORIAL.zip
         file_id = "1UdL0oJCkWw57t-LSLRmYUTzSrAs4ruMS" 
         
-        # MODO TOPADORA ACTIVADO (Rompe el cartel de virus de Google)
-        url_fuerza = f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
-        gdown.download(url=url_fuerza, output="base.zip", quiet=False, fuzzy=True)
+        # Descarga tradicional limpia (sin fuzzy) para evitar el error de Railway
+        gdown.download(id=file_id, output="base.zip", quiet=False)
         
         with zipfile.ZipFile("base.zip", 'r') as zr: 
             zr.extractall()
