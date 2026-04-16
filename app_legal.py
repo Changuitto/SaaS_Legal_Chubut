@@ -6,7 +6,6 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import os
 import zipfile
 import urllib.request
-import time  
 import streamlit as st
 import extra_streamlit_components as stx
 from datetime import datetime, timedelta
@@ -129,31 +128,40 @@ def pantalla_acceso():
         tab_in, tab_reg = st.tabs(["🔑 Entrar", "📝 Registrarse"])
         
         with tab_in:
-            with st.form("form_login", clear_on_submit=False):
-                email = st.text_input("Email")
-                password = st.text_input("Contraseña", type="password")
-                btn_login = st.form_submit_button("Iniciar Sesión", use_container_width=True)
+            # 1er PASO: Mostrar formulario de inicio de sesión
+            if not st.session_state.get("login_exitoso"):
+                with st.form("form_login", clear_on_submit=False):
+                    email = st.text_input("Email")
+                    password = st.text_input("Contraseña", type="password")
+                    btn_login = st.form_submit_button("Iniciar Sesión", use_container_width=True)
 
-            if btn_login:
-                if email and password:
-                    with st.spinner("Autenticando y guardando sesión segura..."):
-                        try:
-                            res = supabase.auth.sign_in_with_password({"email": email.strip(), "password": password})
-                            
-                            # GUARDAMOS EL PASE VIP (CON KEYS ÚNICAS PARA QUE NO CHOCAR)
-                            vencimiento_sesion = datetime.now() + timedelta(days=30)
-                            cookie_manager.set("supa_access", res.session.access_token, expires_at=vencimiento_sesion, key="set_acc_log")
-                            cookie_manager.set("supa_refresh", res.session.refresh_token, expires_at=vencimiento_sesion, key="set_ref_log")
-                            
-                            time.sleep(1)
-                            
-                            st.session_state.user_data = res.user
-                            st.session_state.show_login = False
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"❌ Error al iniciar sesión. Verificá tus credenciales o si confirmaste tu email.")
-                else:
-                    st.warning("⚠️ Completá ambos campos.")
+                if btn_login:
+                    if email and password:
+                        with st.spinner("Autenticando..."):
+                            try:
+                                res = supabase.auth.sign_in_with_password({"email": email.strip(), "password": password})
+                                
+                                # GUARDAMOS EL PASE VIP EN LAS COOKIES
+                                vencimiento_sesion = datetime.now() + timedelta(days=30)
+                                cookie_manager.set("supa_access", res.session.access_token, expires_at=vencimiento_sesion, key="set_acc_log")
+                                cookie_manager.set("supa_refresh", res.session.refresh_token, expires_at=vencimiento_sesion, key="set_ref_log")
+                                
+                                # Activamos el segundo paso en la memoria
+                                st.session_state.temp_user = res.user
+                                st.session_state.login_exitoso = True
+                            except Exception as e:
+                                st.error(f"❌ Error al iniciar sesión. Verificá tus credenciales o si confirmaste tu email.")
+                    else:
+                        st.warning("⚠️ Completá ambos campos.")
+
+            # 2do PASO: Mostrar botón final (Esto soluciona el cuelgue)
+            if st.session_state.get("login_exitoso"):
+                st.success("✅ ¡Cookies de seguridad guardadas con éxito!")
+                if st.button("👉 Entrar a mi cuenta", type="primary", use_container_width=True):
+                    st.session_state.user_data = st.session_state.temp_user
+                    st.session_state.show_login = False
+                    st.session_state.login_exitoso = False
+                    st.rerun()
 
         with tab_reg:
             with st.form("form_registro", clear_on_submit=False):
@@ -317,7 +325,6 @@ def pantalla_chat():
             supabase.auth.sign_out()
             cookie_manager.delete("supa_access", key="del_acc_exp")
             cookie_manager.delete("supa_refresh", key="del_ref_exp")
-            time.sleep(1) 
             st.session_state.user_data = None
             st.rerun()
         st.stop()
@@ -374,7 +381,6 @@ def pantalla_chat():
             supabase.auth.sign_out()
             cookie_manager.delete("supa_access", key="del_acc_out")
             cookie_manager.delete("supa_refresh", key="del_ref_out")
-            time.sleep(1)
             st.session_state.user_data = None
             st.rerun()
 
@@ -392,44 +398,4 @@ def pantalla_chat():
             with st.chat_message(m["role"]): st.markdown(m["content"])
 
     if prompt := st.chat_input("¿En qué puedo ayudarte hoy?"):
-        chat_actual.append({"role": "user", "content": prompt})
-        historial[st.session_state.sesion_actual] = chat_actual
-        supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
-        st.rerun()
-
-    if chat_actual and chat_actual[-1]["role"] == "user":
-        with st.chat_message("assistant"):
-            with st.spinner("Analizando jurisprudencia..."):
-                docs = vdb.similarity_search(chat_actual[-1]["content"], k=6)
-                contexto_final = "\n\n".join([f"📅 FECHA: {d.metadata.get('fecha_completa')}\n🔗 URL: {d.metadata.get('link_pdf')}\n📄 CONTENIDO:\n{d.page_content}" for d in docs])
-                
-                mensajes = [SystemMessage(content=generar_instruccion_ia(contexto_final))]
-                for m in chat_actual[:-1]:
-                    mensajes.append(HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"]))
-                mensajes.append(HumanMessage(content=chat_actual[-1]["content"]))
-                
-                respuesta = llm.invoke(mensajes)
-                st.markdown(respuesta.content)
-                chat_actual.append({"role": "assistant", "content": respuesta.content})
-                
-                if st.session_state.sesion_actual.startswith("Consulta ") and len(chat_actual) == 2:
-                    try:
-                        tit_p = f"Resume esta consulta en 3 o 4 palabras: '{chat_actual[0]['content']}'"
-                        nuevo_titulo = llm.invoke([HumanMessage(content=tit_p)]).content.replace('"', '').strip()
-                        if nuevo_titulo in historial: nuevo_titulo += " (1)" 
-                        historial[nuevo_titulo] = historial.pop(st.session_state.sesion_actual)
-                        st.session_state.sesion_actual = nuevo_titulo
-                    except: pass
-
-                supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
-                st.rerun()
-
-# ==========================================
-# GESTOR CENTRAL DE PANTALLAS (RUTEADOR)
-# ==========================================
-if st.session_state.user_data is not None:
-    pantalla_chat()
-elif st.session_state.show_login:
-    pantalla_acceso()
-else:
-    pantalla_invitado()
+        chat_actual.append({"role": "
