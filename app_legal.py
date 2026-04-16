@@ -6,6 +6,7 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import os
 import zipfile
 import streamlit as st
+import extra_streamlit_components as stx  # <-- NUEVA LIBRERÍA DE COOKIES
 from datetime import datetime, timedelta
 from supabase import create_client, Client
 from langchain_chroma import Chroma
@@ -38,7 +39,13 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. CONEXIÓN A SERVICIOS
+# 2. INICIALIZAR COOKIES Y SERVICIOS
+@st.cache_resource(experimental_allow_widgets=True)
+def get_cookie_manager():
+    return stx.CookieManager()
+
+cookie_manager = get_cookie_manager()
+
 OPENAI_KEY = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL") or st.secrets.get("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY") or st.secrets.get("SUPABASE_KEY")
@@ -50,7 +57,17 @@ else:
     os.environ["OPENAI_API_KEY"] = OPENAI_KEY
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# 3. VARIABLES DE ESTADO
 if "user_data" not in st.session_state: st.session_state.user_data = None
+if "show_login" not in st.session_state: st.session_state.show_login = False
+if "guest_history" not in st.session_state: st.session_state.guest_history = []
+
+# LEER COOKIE DE CONSULTAS (Si no existe, empieza en 0)
+galleta_consultas = cookie_manager.get(cookie="consultas_invitado")
+if galleta_consultas is None:
+    consultas_gastadas = 0
+else:
+    consultas_gastadas = int(galleta_consultas)
 
 # ==========================================
 # AUTOMATIZACIÓN DE PAGO
@@ -67,9 +84,13 @@ def verificar_pago_entrante(user_email):
         st.query_params.clear()
 
 # ==========================================
-# PANTALLA DE ACCESO
+# PANTALLA DE ACCESO (LOGIN / REGISTRO)
 # ==========================================
 def pantalla_acceso():
+    if st.button("⬅️ Volver al Chat de Prueba"):
+        st.session_state.show_login = False
+        st.rerun()
+
     col1, col2, col3 = st.columns([1, 1.8, 1])
     with col2:
         if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
@@ -88,6 +109,7 @@ def pantalla_acceso():
                         try:
                             res = supabase.auth.sign_in_with_password({"email": email.strip(), "password": password})
                             st.session_state.user_data = res.user
+                            st.session_state.show_login = False
                             st.rerun()
                         except Exception as e:
                             st.error("❌ Credenciales incorrectas. Verificá tu correo y contraseña.")
@@ -106,7 +128,7 @@ def pantalla_acceso():
                 if not new_user or not new_email or not new_pass or not confirm_pass:
                     st.warning("⚠️ Por favor, completá todos los campos.")
                 elif new_pass != confirm_pass:
-                    st.error("❌ Las contraseñas no coinciden. Intentá de nuevo.")
+                    st.error("❌ Las contraseñas no coinciden.")
                 elif len(new_pass) < 6:
                     st.error("❌ La contraseña debe tener al menos 6 caracteres.")
                 else:
@@ -122,18 +144,113 @@ def pantalla_acceso():
                             try:
                                 venc_trial = (datetime.now() + timedelta(days=7)).date()
                                 supabase.auth.sign_up({"email": new_email.strip(), "password": new_pass, "options": {"data": {"display_name": new_user}}})
-                                
                                 supabase.table("usuarios").insert({
                                     "usuario": new_user, "email": new_email.strip(), "plan": "gratis",
                                     "vencimiento_trial": str(venc_trial), "historial": {"Nueva Consulta": []}
                                 }).execute()
-                                
                                 st.success("✅ ¡Cuenta creada con éxito! Ya podés iniciar sesión en la pestaña 'Entrar'.")
                             except Exception as e: 
                                 st.error(f"Error técnico: {e}")
 
 # ==========================================
-# PANTALLA DE CHAT
+# CEREBRO GLOBAL DE LA IA
+# ==========================================
+@st.cache_resource(show_spinner="Conectando el cerebro jurídico de Chubut (Puede demorar unos segundos)...")
+def load_ia():
+    if not os.path.exists("MI_BASE_VECTORIAL"):
+        import gdown
+        # 👇👇👇 ACÁ VA TU ID DE GOOGLE DRIVE 👇👇👇
+        file_id = "1pw_mJl3qyESz9WFq9XC2Q7MRBZiOTp59" 
+        gdown.download(f"https://drive.google.com/uc?id={file_id}", "base.zip", quiet=False)
+        with zipfile.ZipFile("base.zip", 'r') as zr: zr.extractall()
+    emb = OpenAIEmbeddings(model="text-embedding-3-small")
+    vdb = Chroma(persist_directory="MI_BASE_VECTORIAL", embedding_function=emb)
+    return vdb, ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
+
+vdb, llm = load_ia()
+
+# ==========================================
+# PANTALLA MODO INVITADO (Con Cookies)
+# ==========================================
+def pantalla_invitado():
+    global consultas_gastadas
+    consultas_restantes = 5 - consultas_gastadas
+
+    with st.sidebar:
+        if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
+        st.divider()
+        st.markdown("👤 **Modo Invitado**")
+        st.info(f"🎁 Consultas de prueba: {consultas_restantes} / 5")
+        st.divider()
+        st.markdown("<p style='font-size: 0.9rem; color: gray;'>Para guardar tu historial y tener acceso sin límites, creá tu cuenta gratuita.</p>", unsafe_allow_html=True)
+        
+        if st.button("🔑 Iniciar Sesión / Registrarse", type="primary", use_container_width=True):
+            st.session_state.show_login = True
+            st.rerun()
+
+    if not st.session_state.guest_history:
+        st.markdown("""
+            <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 50vh; text-align: center;">
+                <h3 style="color: #9CA3AF; font-weight: 400; margin-bottom: 5px;">Bienvenido a Chubut.IA</h3>
+                <h1 style="font-size: 3rem; font-weight: 600; margin-top: 0;">Probalo gratis, sin registrarte.</h1>
+                <p style="font-size: 1.2rem; color: gray;">Hacé una consulta legal para ver cómo funciona.</p>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        for m in st.session_state.guest_history:
+            with st.chat_message(m["role"]): st.markdown(m["content"])
+
+    # Verificador de Límite mediante Cookie
+    if consultas_gastadas >= 5:
+        st.warning("⚠️ Alcanzaste el límite de 5 consultas gratuitas de prueba.")
+        if st.button("🚀 Crear cuenta gratis ahora para continuar", type="primary", use_container_width=True):
+            st.session_state.show_login = True
+            st.rerun()
+    else:
+        if prompt := st.chat_input("Ej: ¿Qué dice la jurisprudencia sobre alimentos?"):
+            st.session_state.guest_history.append({"role": "user", "content": prompt})
+            st.rerun()
+
+    if st.session_state.guest_history and st.session_state.guest_history[-1]["role"] == "user":
+        with st.chat_message("assistant"):
+            with st.spinner("Buscando jurisprudencia en modo prueba..."):
+                docs = vdb.similarity_search(st.session_state.guest_history[-1]["content"], k=6)
+                
+                contexto_partes = []
+                for i, d in enumerate(docs):
+                    link_real = d.metadata.get('link_pdf', 'Enlace no disponible')
+                    fecha_real = d.metadata.get('fecha_completa', 'Fecha no detectada')
+                    contexto_partes.append(f"--- FALLO {i+1} ---\n📅 FECHA EXACTA: {fecha_real}\n🔗 URL DEL PDF: {link_real}\n📄 CONTENIDO:\n{d.page_content}")
+                
+                contexto_final = "\n\n".join(contexto_partes)
+                instruccion = f"""Sos Chubut.IA, asistente jurídico de Chubut. Basate en esto:
+{contexto_final}
+
+Muestra todos los fallos encontrados usando esta estructura:
+📌 **[Nombre del Fallo]**
+* 📅 **Fecha:** [La fecha de los metadatos]
+* 📖 **Cita Textual:** "[Extracto relevante]"
+* 📝 **Resumen:** [Resumen breve]
+* ⚖️ **Resolución:** [Decisión]
+* 🔗 **Ver fallo oficial:** https://revista.profesionaldelainformacion.com/index.php/EPI/article/view/epi.2014.nov.04"""
+                
+                mensajes = [SystemMessage(content=instruccion)]
+                for m in st.session_state.guest_history[:-1]:
+                    mensajes.append(HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"]))
+                
+                mensajes.append(HumanMessage(content=st.session_state.guest_history[-1]["content"]))
+                
+                respuesta = llm.invoke(mensajes)
+                st.markdown(respuesta.content)
+                st.session_state.guest_history.append({"role": "assistant", "content": respuesta.content})
+                
+                # ACTUALIZAR COOKIE (Duración: 1 año)
+                nuevas_consultas = consultas_gastadas + 1
+                cookie_manager.set("consultas_invitado", str(nuevas_consultas), expires_at=datetime.now() + timedelta(days=365))
+                st.rerun()
+
+# ==========================================
+# PANTALLA DE CHAT (USUARIOS LOGUEADOS)
 # ==========================================
 def pantalla_chat():
     user = st.session_state.user_data
@@ -179,7 +296,6 @@ def pantalla_chat():
             st.rerun()
         st.stop()
 
-    # BARRA LATERAL
     with st.sidebar:
         if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
         st.divider()
@@ -240,19 +356,6 @@ def pantalla_chat():
             st.session_state.user_data = None
             st.rerun()
 
-    @st.cache_resource(show_spinner="Conectando el cerebro jurídico de Chubut (Puede demorar unos segundos)...")
-    def load_ia():
-        if not os.path.exists("MI_BASE_VECTORIAL"):
-            import gdown
-            # 👇👇👇 ACÁ VA TU ID DE GOOGLE DRIVE NUEVO 👇👇👇
-            file_id = "1UdL0oJCKwW57t-LSLRmYUTzSrAs4ruMS" 
-            gdown.download(f"https://drive.google.com/uc?id={file_id}", "base.zip", quiet=False)
-            with zipfile.ZipFile("base.zip", 'r') as zr: zr.extractall()
-        emb = OpenAIEmbeddings(model="text-embedding-3-small")
-        vdb = Chroma(persist_directory="MI_BASE_VECTORIAL", embedding_function=emb)
-        return vdb, ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
-
-    vdb, llm = load_ia()
     chat_actual = historial.get(st.session_state.sesion_actual, [])
 
     if not chat_actual:
@@ -281,13 +384,12 @@ def pantalla_chat():
                 for i, d in enumerate(docs):
                     link_real = d.metadata.get('link_pdf', 'Enlace no disponible')
                     fecha_real = d.metadata.get('fecha_completa', 'Fecha no detectada')
-                    
                     contexto_partes.append(f"--- FALLO {i+1} ---\n📅 FECHA EXACTA: {fecha_real}\n🔗 URL DEL PDF: {link_real}\n📄 CONTENIDO:\n{d.page_content}")
                 
                 contexto_final = "\n\n".join(contexto_partes)
                 
                 instruccion = f"""Sos Chubut.IA, asistente jurídico de la Provincia de Chubut.
-TU ÚNICA MISIÓN ES MOSTRAR LA JURISPRUDENCIA. NO TE NIEGUES A RESPONDER.
+TU ÚNICA MISIÓN ES MOSTRAR LA JURISPRUDENCIA.
 
 DOCUMENTOS OBTENIDOS DE LA BASE DE DATOS:
 {contexto_final}
@@ -328,8 +430,12 @@ REGLAS ESTRICTAS PARA RESPONDER:
                 supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
                 st.rerun()
 
-# --- EJECUCIÓN ---
-if st.session_state.user_data is None:
+# ==========================================
+# GESTOR CENTRAL DE PANTALLAS
+# ==========================================
+if st.session_state.user_data is not None:
+    pantalla_chat()
+elif st.session_state.show_login:
     pantalla_acceso()
 else:
-    pantalla_chat()
+    pantalla_invitado()
