@@ -40,9 +40,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. INICIALIZAR SERVICIOS
-cookie_manager = stx.CookieManager()
+# 2. SISTEMA BLINDADO DE COOKIES
+cookie_manager = stx.CookieManager(key="gestor_seguro_chubut")
 
+mis_cookies = cookie_manager.get_all()
+if mis_cookies is None:
+    st.markdown("<h4 style='text-align: center; color: gray; margin-top: 50px;'>⏳ Sincronizando entorno seguro...</h4>", unsafe_allow_html=True)
+    st.stop()
+
+# 3. VARIABLES DE ENTORNO Y SERVICIOS
 OPENAI_KEY = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL") or st.secrets.get("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY") or st.secrets.get("SUPABASE_KEY")
@@ -54,16 +60,24 @@ else:
     os.environ["OPENAI_API_KEY"] = OPENAI_KEY
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# 3. VARIABLES DE ESTADO
-if "user_data" not in st.session_state: st.session_state.user_data = None
+# --- RECUPERACIÓN AUTOMÁTICA DE SESIÓN (EL ARREGLO DEL F5) ---
+if "user_data" not in st.session_state: 
+    st.session_state.user_data = None
+
+# Si la memoria está vacía pero el navegador tiene los tokens guardados, lo volvemos a loguear invisiblemente
+if st.session_state.user_data is None and "supa_access" in mis_cookies and "supa_refresh" in mis_cookies:
+    try:
+        res = supabase.auth.set_session(mis_cookies["supa_access"], mis_cookies["supa_refresh"])
+        st.session_state.user_data = res.user
+    except Exception:
+        pass # Si el token expiró, lo ignoramos y lo mandamos a loguearse normal
+
 if "show_login" not in st.session_state: st.session_state.show_login = False
 if "guest_history" not in st.session_state: st.session_state.guest_history = []
 if "consultas_gastadas" not in st.session_state: st.session_state.consultas_gastadas = 0
 
-# INTENTO DE LECTURA DE COOKIE (Como capa extra de seguridad simple)
-galleta = cookie_manager.get(cookie="chubut_invitado")
-if galleta:
-    st.session_state.consultas_gastadas = max(st.session_state.consultas_gastadas, int(galleta))
+if "limite_invitado_chubut" in mis_cookies:
+    st.session_state.consultas_gastadas = int(mis_cookies["limite_invitado_chubut"])
 
 # ==========================================
 # INSTRUCCIÓN ESTRICTA PARA LA IA (CHALECO DE FUERZA)
@@ -126,6 +140,12 @@ def pantalla_acceso():
                         try:
                             res = supabase.auth.sign_in_with_password({"email": email.strip(), "password": password})
                             st.session_state.user_data = res.user
+                            
+                            # GUARDAMOS EL PASE VIP EN LAS COOKIES
+                            vencimiento_sesion = datetime.now() + timedelta(days=30)
+                            cookie_manager.set("supa_access", res.session.access_token, expires_at=vencimiento_sesion)
+                            cookie_manager.set("supa_refresh", res.session.refresh_token, expires_at=vencimiento_sesion)
+                            
                             st.session_state.show_login = False
                             st.rerun()
                         except Exception as e:
@@ -242,12 +262,10 @@ def pantalla_invitado():
                 st.markdown(respuesta.content)
                 st.session_state.guest_history.append({"role": "assistant", "content": respuesta.content})
                 
-                # Actualizamos el contador y guardamos el intento de cookie
                 st.session_state.consultas_gastadas += 1
                 vencimiento = datetime.now() + timedelta(days=365)
                 cookie_manager.set("chubut_invitado", str(st.session_state.consultas_gastadas), expires_at=vencimiento)
                 
-                # Botón inmediato para registrarse tras la primera respuesta
                 st.markdown("---")
                 if st.button("🚀 ¡Excelente! Quiero crear mi cuenta gratis para seguir consultando", type="primary", use_container_width=True):
                     st.session_state.show_login = True
@@ -291,8 +309,12 @@ def pantalla_chat():
             </div>
         """, unsafe_allow_html=True)
         st.link_button("🚀 Activar Plan Pro ($6.500 ARS)", "https://mpago.la/1f481Uj", use_container_width=True)
+        
+        # AL CERRAR SESIÓN DESTRUIMOS EL PASE VIP
         if st.button("Cerrar Sesión"):
             supabase.auth.sign_out()
+            cookie_manager.delete("supa_access")
+            cookie_manager.delete("supa_refresh")
             st.session_state.user_data = None
             st.rerun()
         st.stop()
@@ -344,8 +366,12 @@ def pantalla_chat():
                     supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
                     st.rerun()
         st.divider()
+        
+        # AL CERRAR SESIÓN DESTRUIMOS EL PASE VIP
         if st.button("Cerrar Sesión", use_container_width=True):
             supabase.auth.sign_out()
+            cookie_manager.delete("supa_access")
+            cookie_manager.delete("supa_refresh")
             st.session_state.user_data = None
             st.rerun()
 
