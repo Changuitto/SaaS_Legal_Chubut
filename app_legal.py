@@ -59,13 +59,20 @@ if "user_data" not in st.session_state: st.session_state.user_data = None
 if "show_login" not in st.session_state: st.session_state.show_login = False
 if "guest_history" not in st.session_state: st.session_state.guest_history = []
 
-# LECTURA DE COOKIES EN TIEMPO REAL
+# --- EL FIX DEFINITIVO DE LAS COOKIES ---
+# Inicializamos la variable en 0 si no existe
 if "consultas_gastadas" not in st.session_state:
-    galleta = cookie_manager.get(cookie="consultas_invitado")
-    st.session_state.consultas_gastadas = int(galleta) if galleta else 0
+    st.session_state.consultas_gastadas = 0
+
+# Leemos la cookie del navegador constantemente
+galleta = cookie_manager.get(cookie="consultas_invitado")
+
+# Si la cookie trae un número, sincronizamos tomando SIEMPRE el valor más alto
+if galleta is not None:
+    st.session_state.consultas_gastadas = max(st.session_state.consultas_gastadas, int(galleta))
 
 # ==========================================
-# INSTRUCCIÓN ESTRICTA PARA LA IA
+# INSTRUCCIÓN ESTRICTA PARA LA IA (CHALECO DE FUERZA)
 # ==========================================
 def generar_instruccion_ia(contexto):
     return f"""Sos Chubut.IA, un asistente jurídico estrictamente enfocado en la Provincia de Chubut.
@@ -128,7 +135,6 @@ def pantalla_acceso():
                             st.session_state.show_login = False
                             st.rerun()
                         except Exception as e:
-                            # Te muestra el error real (útil por si falta confirmar mail)
                             st.error(f"❌ Error al iniciar sesión. Verificá que tus datos sean correctos y que hayas confirmado tu correo electrónico.")
                 else:
                     st.warning("⚠️ Completá ambos campos.")
@@ -165,13 +171,12 @@ def pantalla_acceso():
                                     "usuario": new_user, "email": new_email.strip(), "plan": "gratis",
                                     "vencimiento_trial": str(venc_trial), "historial": {"Nueva Consulta": []}
                                 }).execute()
-                                # Aviso mucho más claro
                                 st.success("✅ ¡Cuenta creada con éxito! POR FAVOR: Revisá tu correo electrónico (y tu carpeta de Spam) para confirmar tu cuenta antes de iniciar sesión.")
                             except Exception as e: 
                                 st.error(f"Error técnico: {e}")
 
 # ==========================================
-# CEREBRO GLOBAL DE LA IA
+# CEREBRO GLOBAL (DESCARGA DIRECTA DE GITHUB RELEASES)
 # ==========================================
 @st.cache_resource(show_spinner="Conectando el cerebro jurídico de Chubut (Puede demorar unos minutos)...")
 def load_ia():
@@ -243,7 +248,7 @@ def pantalla_invitado():
                 st.markdown(respuesta.content)
                 st.session_state.guest_history.append({"role": "assistant", "content": respuesta.content})
                 
-                # Actualizar contador
+                # Actualizamos el contador en tiempo real y blindamos la cookie
                 st.session_state.consultas_gastadas += 1
                 cookie_manager.set("consultas_invitado", str(st.session_state.consultas_gastadas), expires_at=datetime.now() + timedelta(days=365))
                 st.rerun()
@@ -258,7 +263,6 @@ def pantalla_chat():
     datos = db_res.data[0]
     hoy = datetime.now().date()
     
-    # Formateo de fechas para mostrarlas en la barra
     fecha_trial_formateada = ""
     if datos.get("vencimiento_trial"):
         fecha_trial_formateada = datetime.strptime(datos["vencimiento_trial"], "%Y-%m-%d").strftime("%d/%m/%Y")
@@ -291,13 +295,11 @@ def pantalla_chat():
             st.rerun()
         st.stop()
 
-    # --- BARRA LATERAL COMPLETA ---
     with st.sidebar:
         if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
         st.divider()
         st.markdown(f"👤 **{datos['usuario']}**")
         
-        # Fechas de vencimiento restauradas
         if es_pro: 
             st.warning(f"💎 Plan PRO hasta el {fecha_pro_formateada}")
         else: 
@@ -305,7 +307,6 @@ def pantalla_chat():
         
         st.divider()
         
-        # Botón de Pago Restaurado
         if not es_pro:
             st.markdown("""
                 <div style="border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 15px; background-color: rgba(255, 255, 255, 0.05); text-align: center; margin-bottom: 10px;">
@@ -348,7 +349,6 @@ def pantalla_chat():
 
     chat_actual = historial.get(st.session_state.sesion_actual, [])
     
-    # SALUDO INICIAL RESTAURADO
     if not chat_actual:
         st.markdown(f"""
             <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 60vh; text-align: center;">
@@ -381,7 +381,6 @@ def pantalla_chat():
                 st.markdown(respuesta.content)
                 chat_actual.append({"role": "assistant", "content": respuesta.content})
                 
-                # TÍTULOS AUTOMÁTICOS RESTAURADOS
                 if st.session_state.sesion_actual.startswith("Consulta ") and len(chat_actual) == 2:
                     try:
                         tit_p = f"Resume esta consulta en 3 o 4 palabras: '{chat_actual[0]['content']}'"
