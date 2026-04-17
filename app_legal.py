@@ -15,6 +15,8 @@ from supabase import create_client, Client
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from audio_recorder_streamlit import audio_recorder # <-- NUEVO: MICRÓFONO
+from openai import OpenAI # <-- NUEVO: TRANSCRIPTOR DE VOZ
 
 # 1. CONFIGURACIÓN DE PÁGINA Y ESTILO PROFESIONAL
 st.set_page_config(page_title="Chubut.IA - Jurisprudencia", page_icon="logo.png", layout="wide")
@@ -93,6 +95,7 @@ if not OPENAI_KEY or not SUPABASE_URL or not SUPABASE_KEY:
 else:
     os.environ["OPENAI_API_KEY"] = OPENAI_KEY
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    cliente_audio = OpenAI(api_key=OPENAI_KEY) # Cliente para transcribir voz
 
 if "user_data" not in st.session_state: 
     st.session_state.user_data = None
@@ -116,14 +119,14 @@ if galleta_invitado:
     st.session_state.consultas_gastadas = max(st.session_state.consultas_gastadas, int(galleta_invitado))
 
 # ==========================================
-# INSTRUCCIÓN ESTRICTA PARA LA IA (CHALECO)
+# INSTRUCCIÓN ESTRICTA PARA LA IA CON FILTROS
 # ==========================================
-def generar_instruccion_ia(contexto):
-    return f"""Sos Chubut.IA, un asistente jurídico estrictamente enfocado en la Provincia de Chubut.
+def generar_instruccion_ia(contexto, f_anio="Todos", f_fuero="Todos"):
+    instruccion_base = f"""Sos Chubut.IA, un asistente jurídico estrictamente enfocado en la Provincia de Chubut.
 TU ÚNICA MISIÓN ES MOSTRAR JURISPRUDENCIA.
 REGLA DE ORO: Si el usuario te saluda, te hace charla, o te pide cosas fuera del ámbito legal, DEBES NEGARTE CORTÉSMENTE y recordarle que solo estás capacitado para buscar fallos legales de Chubut.
 
-CONTEXTO DE LA BASE DE DATOS:
+CONTEXTO DE LA BASE DE DATOS (EUREKA):
 {contexto}
 
 REGLAS ESTRICTAS DE FORMATO (No uses otro):
@@ -136,9 +139,15 @@ Si la consulta es legal, debes estructurar CADA fallo encontrado exactamente as�
 * ⚖️ **Resolución:** [Decisión final]
 * 🔗 **Ver fallo oficial:** [Pega la 'URL' tal cual, sin corchetes ni formato markdown. Solo el link crudo]"""
 
-# ==========================================
-# DESCARGO DE RESPONSABILIDAD LEGAL Y SOPORTE
-# ==========================================
+    filtros = ""
+    if f_anio != "Todos" or f_fuero != "Todos":
+        filtros = f"\n\n⚠️ INSTRUCCIÓN DE FILTRADO ACTIVA: El usuario ha solicitado específicamente fallos con los siguientes filtros:\n"
+        if f_anio != "Todos": filtros += f"- Año: {f_anio}\n"
+        if f_fuero != "Todos": filtros += f"- Fuero/Materia: {f_fuero}\n"
+        filtros += "Debes priorizar y mostrar ÚNICAMENTE los fallos del contexto que coincidan con estos criterios. Si no hay fallos exactos para ese filtro en el contexto, aclarálo cortésmente."
+    
+    return instruccion_base + filtros
+
 def mostrar_disclaimer():
     st.markdown("""
         <div style="font-size: 0.75rem; color: #6B7280; text-align: center; margin-top: 30px; padding: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
@@ -251,7 +260,7 @@ def pantalla_acceso():
         mostrar_soporte()
 
 # ==========================================
-# CEREBRO GLOBAL (DESCARGA DIRECTA DE GITHUB RELEASES)
+# CEREBRO GLOBAL
 # ==========================================
 @st.cache_resource(show_spinner="Conectando el cerebro jurídico de Chubut (Puede demorar unos minutos)...")
 def load_ia():
@@ -268,7 +277,31 @@ def load_ia():
 vdb, llm = load_ia()
 
 # ==========================================
-# PANTALLA MODO INVITADO (LÍMITE: 5 CONSULTAS)
+# RENDERIZADO DEL SIDEBAR PREMIUM (FILTROS Y VOZ)
+# ==========================================
+def render_sidebar_premium():
+    st.divider()
+    st.markdown("<h4 style='color: #60A5FA; margin-bottom: 0;'>⚙️ Búsqueda Avanzada</h4>", unsafe_allow_html=True)
+    f_anio = st.selectbox("📅 Año del Fallo", ["Todos", "2024", "2023", "2022", "2021", "2020 y Anteriores"])
+    f_fuero = st.selectbox("⚖️ Fuero / Materia", ["Todos", "Penal", "Civil y Comercial", "Laboral", "Familia", "Contencioso Administrativo"])
+    
+    st.markdown("<h4 style='color: #60A5FA; margin-bottom: 0; margin-top: 15px;'>🎙️ Dictado por Voz</h4>", unsafe_allow_html=True)
+    st.caption("Toca el micrófono y relatá tu caso.")
+    audio_bytes = audio_recorder(text="", recording_color="#ef4444", neutral_color="#9CA3AF", icon_name="microphone", icon_size="2x")
+    
+    prompt_audio = None
+    if audio_bytes:
+        with st.spinner("Transcribiendo tu audio..."):
+            with open("temp_audio.wav", "wb") as f:
+                f.write(audio_bytes)
+            with open("temp_audio.wav", "rb") as audio_file:
+                transcript = cliente_audio.audio.transcriptions.create(model="whisper-1", file=audio_file)
+                prompt_audio = transcript.text
+                
+    return f_anio, f_fuero, prompt_audio
+
+# ==========================================
+# PANTALLA MODO INVITADO
 # ==========================================
 def pantalla_invitado():
     consultas_restantes = 5 - st.session_state.consultas_gastadas
@@ -278,6 +311,9 @@ def pantalla_invitado():
         st.divider()
         st.markdown("👤 **Modo Invitado**")
         st.info(f"🎁 Consultas de prueba: {max(0, consultas_restantes)} / 5")
+        
+        f_anio, f_fuero, prompt_audio = render_sidebar_premium() # <-- INTERFAZ PREMIUM
+        
         st.divider()
         if st.button("🔑 Iniciar Sesión / Registrarse", type="primary", use_container_width=True):
             st.session_state.show_login = True
@@ -289,7 +325,7 @@ def pantalla_invitado():
         st.markdown("""
             <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 40vh; text-align: center;">
                 <h1 style="font-size: 3rem; font-weight: 600;">Probalo gratis, sin registrarte.</h1>
-                <p style="font-size: 1.2rem; color: gray;">Hacé una consulta legal sobre Chubut para ver cómo funciona.</p>
+                <p style="font-size: 1.2rem; color: gray;">Escribí tu consulta o usá el micrófono de la izquierda para dictar tu caso.</p>
             </div>
         """, unsafe_allow_html=True)
         
@@ -301,13 +337,6 @@ def pantalla_invitado():
             st.rerun()
         if c2.button("🚗 Jurisprudencia en accidentes de tránsito", use_container_width=True):
             st.session_state.guest_history.append({"role": "user", "content": "Mostrame jurisprudencia sobre accidentes de tránsito"})
-            st.rerun()
-        c3, c4 = st.columns(2)
-        if c3.button("🏢 Fallos por despidos sin causa", use_container_width=True):
-            st.session_state.guest_history.append({"role": "user", "content": "Busca fallos sobre despidos sin causa justificada"})
-            st.rerun()
-        if c4.button("🏥 Mala praxis médica", use_container_width=True):
-            st.session_state.guest_history.append({"role": "user", "content": "Busca fallos relacionados con mala praxis médica"})
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
             
@@ -321,13 +350,7 @@ def pantalla_invitado():
             rol = "👤 Usuario" if msg["role"] == "user" else "🤖 Chubut.IA"
             chat_str += f"{rol}:\n{msg['content']}\n\n{'-'*40}\n\n"
             
-        st.download_button(
-            label="📄 Exportar chat a texto (TXT)",
-            data=chat_str,
-            file_name="Reporte_ChubutIA.txt",
-            mime="text/plain",
-            use_container_width=True
-        )
+        st.download_button(label="📄 Exportar chat a texto (TXT)", data=chat_str, file_name="Reporte_ChubutIA.txt", mime="text/plain", use_container_width=True)
 
     if st.session_state.consultas_gastadas >= 5:
         st.warning("⚠️ Alcanzaste el límite de 5 consultas gratuitas.")
@@ -335,17 +358,26 @@ def pantalla_invitado():
             st.session_state.show_login = True
             st.rerun()
     else:
-        if prompt := st.chat_input("Ej: ¿Qué dice la jurisprudencia sobre alimentos?"):
-            st.session_state.guest_history.append({"role": "user", "content": prompt})
+        # Lógica de input (Texto o Voz)
+        prompt_texto = st.chat_input("Ej: ¿Qué dice la jurisprudencia sobre alimentos?")
+        query_final = prompt_texto or prompt_audio
+        
+        if query_final:
+            st.session_state.guest_history.append({"role": "user", "content": query_final})
             st.rerun()
 
     if st.session_state.guest_history and st.session_state.guest_history[-1]["role"] == "user":
         with st.chat_message("assistant"):
             with st.spinner("Buscando jurisprudencia..."):
-                docs = vdb.similarity_search(st.session_state.guest_history[-1]["content"], k=6)
+                query_busqueda = st.session_state.guest_history[-1]["content"]
+                if f_anio != "Todos" or f_fuero != "Todos":
+                    query_busqueda += f" (Filtrar por fuero: {f_fuero}, año: {f_anio})"
+                    
+                docs = vdb.similarity_search(query_busqueda, k=6)
                 contexto_final = "\n\n".join([f"📅 FECHA: {d.metadata.get('fecha_completa')}\n🔗 URL: {d.metadata.get('link_pdf')}\n📄 CONTENIDO:\n{d.page_content}" for d in docs])
                 
-                mensajes = [SystemMessage(content=generar_instruccion_ia(contexto_final))]
+                instruccion_filtrada = generar_instruccion_ia(contexto_final, f_anio, f_fuero)
+                mensajes = [SystemMessage(content=instruccion_filtrada)]
                 
                 for m in st.session_state.guest_history[:-1]:
                     mensajes.append(HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"]))
@@ -396,13 +428,11 @@ def pantalla_chat():
         """, unsafe_allow_html=True)
         
         st.link_button("🚀 Activar Plan Pro ($6.500 ARS)", "https://mpago.la/2nDaBRx", use_container_width=True)
-        
         if st.button("Cerrar Sesión"):
             supabase.auth.sign_out()
             st.session_state.del_tokens = True
             st.session_state.user_data = None
             st.rerun()
-            
         st.write("")
         mostrar_soporte()
         st.stop()
@@ -416,18 +446,17 @@ def pantalla_chat():
             st.warning(f"💎 Plan PRO hasta el {fecha_pro_formateada}")
         else: 
             st.info(f"🎁 Prueba Gratis hasta el {fecha_trial_formateada}")
+            
+        f_anio, f_fuero, prompt_audio = render_sidebar_premium() # <-- INTERFAZ PREMIUM
         
         st.divider()
-        
         if not es_pro:
             st.markdown("""
                 <div style="border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 15px; background-color: rgba(255, 255, 255, 0.05); text-align: center; margin-bottom: 10px;">
                     <h4 style="color: #60A5FA; margin-top: 0; margin-bottom: 5px;">🚀 Plan Mensual Pro</h4>
-                    <p style="font-size: 1.2rem; font-weight: bold; color: white; margin: 0;">$6.500 ARS <span style="font-size: 0.9rem; font-weight: normal; color: #9CA3AF;">/ mes</span></p>
-                    <p style="font-size: 0.85rem; color: #9CA3AF; margin-top: 5px; margin-bottom: 0;">Consultas ilimitadas de jurisprudencia.</p>
+                    <p style="font-size: 1.2rem; font-weight: bold; color: white; margin: 0;">$6.500 ARS</p>
                 </div>
             """, unsafe_allow_html=True)
-            
             st.link_button("💳 Pasarme a Pro", "https://mpago.la/2nDaBRx", type="primary", use_container_width=True)
             st.divider()
 
@@ -472,34 +501,9 @@ def pantalla_chat():
             <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 40vh; text-align: center;">
                 <h3 style="color: #9CA3AF; font-weight: 400; margin-bottom: 5px;">Hola, {datos['usuario']}</h3>
                 <h1 style="font-size: 3rem; font-weight: 600; margin-top: 0;">¿En qué puedo ayudarte hoy?</h1>
+                <p style="color: gray;">Usá el teclado, o dictame tu caso con el micrófono de la barra lateral.</p>
             </div>
         """, unsafe_allow_html=True)
-        
-        st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0.9rem; margin-top: 20px;'>💡 Pruebe con alguna de estas sugerencias:</p>", unsafe_allow_html=True)
-        st.markdown("<div class='botones-sugerencia'>", unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
-        if c1.button("⚖️ Fallos sobre cuota alimentaria", key="btn_sug1", use_container_width=True):
-            chat_actual.append({"role": "user", "content": "Mostrame fallos recientes sobre cuota alimentaria"})
-            historial[st.session_state.sesion_actual] = chat_actual
-            supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
-            st.rerun()
-        if c2.button("🚗 Jurisprudencia en accidentes de tránsito", key="btn_sug2", use_container_width=True):
-            chat_actual.append({"role": "user", "content": "Mostrame jurisprudencia sobre accidentes de tránsito"})
-            historial[st.session_state.sesion_actual] = chat_actual
-            supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
-            st.rerun()
-        c3, c4 = st.columns(2)
-        if c3.button("🏢 Fallos por despidos sin causa", key="btn_sug3", use_container_width=True):
-            chat_actual.append({"role": "user", "content": "Busca fallos sobre despidos sin causa justificada"})
-            historial[st.session_state.sesion_actual] = chat_actual
-            supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
-            st.rerun()
-        if c4.button("🏥 Mala praxis médica", key="btn_sug4", use_container_width=True):
-            chat_actual.append({"role": "user", "content": "Busca fallos relacionados con mala praxis médica"})
-            historial[st.session_state.sesion_actual] = chat_actual
-            supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
         
     else:
         for m in chat_actual:
@@ -511,16 +515,14 @@ def pantalla_chat():
             rol = "👤 Usuario" if msg["role"] == "user" else "🤖 Chubut.IA"
             chat_str += f"{rol}:\n{msg['content']}\n\n{'-'*40}\n\n"
             
-        st.download_button(
-            label="📄 Exportar chat a texto (TXT)",
-            data=chat_str,
-            file_name=f"Reporte_{st.session_state.sesion_actual}.txt",
-            mime="text/plain",
-            use_container_width=True
-        )
+        st.download_button(label="📄 Exportar chat a texto (TXT)", data=chat_str, file_name=f"Reporte_{st.session_state.sesion_actual}.txt", mime="text/plain", use_container_width=True)
 
-    if prompt := st.chat_input("¿En qué puedo ayudarte hoy?"):
-        chat_actual.append({"role": "user", "content": prompt})
+    # Lógica de input (Texto o Voz)
+    prompt_texto = st.chat_input("Escribí acá, o usá el micrófono de la izquierda...")
+    query_final = prompt_texto or prompt_audio
+    
+    if query_final:
+        chat_actual.append({"role": "user", "content": query_final})
         historial[st.session_state.sesion_actual] = chat_actual
         supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
         st.rerun()
@@ -528,10 +530,16 @@ def pantalla_chat():
     if chat_actual and chat_actual[-1]["role"] == "user":
         with st.chat_message("assistant"):
             with st.spinner("Analizando jurisprudencia..."):
-                docs = vdb.similarity_search(chat_actual[-1]["content"], k=6)
+                query_busqueda = chat_actual[-1]["content"]
+                if f_anio != "Todos" or f_fuero != "Todos":
+                    query_busqueda += f" (Filtrar por fuero: {f_fuero}, año: {f_anio})"
+                    
+                docs = vdb.similarity_search(query_busqueda, k=6)
                 contexto_final = "\n\n".join([f"📅 FECHA: {d.metadata.get('fecha_completa')}\n🔗 URL: {d.metadata.get('link_pdf')}\n📄 CONTENIDO:\n{d.page_content}" for d in docs])
                 
-                mensajes = [SystemMessage(content=generar_instruccion_ia(contexto_final))]
+                instruccion_filtrada = generar_instruccion_ia(contexto_final, f_anio, f_fuero)
+                mensajes = [SystemMessage(content=instruccion_filtrada)]
+                
                 for m in chat_actual[:-1]:
                     mensajes.append(HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"]))
                 mensajes.append(HumanMessage(content=chat_actual[-1]["content"]))
