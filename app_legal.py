@@ -54,42 +54,29 @@ st.markdown("""
             background-color: rgba(96, 165, 250, 0.1) !important;
         }
         
-        /* --- TRUCO NUCLEAR PARA EL BOTÓN DE MENÚ LATERAL --- */
-        header [data-testid="collapsedControl"] svg {
+        /* --- TRUCO DEFINITIVO: MENÚ HAMBURGUESA --- */
+        [data-testid="collapsedControl"] svg,
+        [data-testid="stSidebarCollapsedControl"] svg,
+        button[kind="header"] svg {
             display: none !important;
-            visibility: hidden !important;
         }
-        header [data-testid="collapsedControl"] {
-            color: transparent !important;
-            background-color: transparent !important;
-            width: 100px !important;
-        }
-        header [data-testid="collapsedControl"]::before {
+        
+        [data-testid="collapsedControl"]::after,
+        [data-testid="stSidebarCollapsedControl"]::after,
+        button[kind="header"]::after {
             content: "☰ MENÚ" !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            position: absolute !important;
-            top: 15px !important;
-            left: 15px !important;
-            font-size: 15px !important;
-            font-weight: 900 !important;
-            color: #ffffff !important;
+            visibility: visible !important;
+            display: block !important;
+            color: white !important;
             background-color: #1E3A8A !important;
-            padding: 8px 14px !important;
+            padding: 8px 15px !important;
             border-radius: 8px !important;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3) !important;
-            letter-spacing: 1px !important;
-            z-index: 9999 !important;
-            transition: all 0.3s ease !important;
-        }
-        header [data-testid="collapsedControl"]:active::before {
-            background-color: #152C69 !important;
-            transform: scale(0.95) !important;
+            font-size: 15px !important;
+            font-weight: bold !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
         }
     </style>
 """, unsafe_allow_html=True)
-
 
 # ==========================================
 # 2. SISTEMA BLINDADO DE COOKIES EN LA RAÍZ
@@ -237,8 +224,8 @@ def pantalla_acceso():
                         st.warning("⚠️ Completá ambos campos.")
 
             if st.session_state.get("login_exitoso"):
-                st.success("✅ ¡Pase VIP generado y guardado en tu navegador!")
-                st.info("👆 Hacé clic abajo para confirmar tu entrada.")
+                st.success("✅ ¡Pase generado y guardado en tu navegador!")
+                st.info("Hacé clic abajo para confirmar tu entrada.")
                 if st.button("👉 ENTRAR A MI CUENTA", type="primary", use_container_width=True):
                     st.session_state.user_data = st.session_state.temp_user
                     st.session_state.show_login = False
