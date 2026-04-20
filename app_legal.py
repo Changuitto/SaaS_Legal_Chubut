@@ -6,8 +6,8 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import os
 import zipfile
 import urllib.request
-import time  
-import json 
+import time
+import json
 import streamlit as st
 import extra_streamlit_components as stx
 from datetime import datetime, timedelta
@@ -83,6 +83,7 @@ def generar_pdf(historial, titulo_chat):
         pdf.cell(0, 10, f"{rol}:", ln=True)
         
         pdf.set_font("helvetica", "", 10)
+        # Limpieza de caracteres especiales para evitar errores en PDF
         texto_limpio = msg["content"].encode('latin-1', 'replace').decode('latin-1')
         pdf.multi_cell(0, 6, texto_limpio)
         pdf.ln(4)
@@ -350,7 +351,7 @@ def pantalla_invitado():
             with st.chat_message(m["role"]): st.markdown(m["content"])
             
         st.markdown("---")
-        # DESCARGA EN PDF PARA INVITADO
+        
         pdf_bytes = generar_pdf(st.session_state.guest_history, "Chat de Prueba Invitado")
         st.download_button(
             label="📄 Exportar chat a PDF",
@@ -399,7 +400,7 @@ def pantalla_chat():
     db_res = supabase.table("usuarios").select("*").eq("email", user.email).execute()
     datos = db_res.data[0]
     
-    # RELOJ AJUSTADO A ARGENTINA (-3 HORAS)
+    # AJUSTE DE HORA PARA ARGENTINA (-3 HORAS)
     hoy = (datetime.now() - timedelta(hours=3)).date()
     
     fecha_trial_formateada = ""
@@ -522,7 +523,7 @@ def pantalla_chat():
             with st.chat_message(m["role"]): st.markdown(m["content"])
             
         st.markdown("---")
-        # DESCARGA EN PDF PARA LOGUEADO
+        
         pdf_bytes = generar_pdf(chat_actual, st.session_state.sesion_actual)
         st.download_button(
             label="📄 Exportar chat a PDF",
@@ -532,12 +533,11 @@ def pantalla_chat():
             use_container_width=True
         )
 
-    # LÓGICA DE VENCIMIENTO MOVIDA AL INPUT
     if not es_pro and not esta_en_trial:
         st.markdown(f"""
             <div style="text-align: center; padding: 20px; border: 2px solid #ef4444; border-radius: 15px; background-color: rgba(239, 68, 68, 0.1); margin-top: 20px;">
                 <h3 style="color: #ef4444; margin-top: 0;">Tu tiempo de acceso ha expirado</h3>
-                <p>Tu semana de prueba gratuita terminó. Activá el Plan Pro para seguir consultando jurisprudencia de Chubut.</p>
+                <p>Tu semana de prueba terminó. Activá el Plan Pro para seguir haciendo consultas.</p>
             </div>
         """, unsafe_allow_html=True)
     else:
