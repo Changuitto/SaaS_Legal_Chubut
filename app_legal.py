@@ -83,11 +83,14 @@ def generar_pdf(historial, titulo_chat):
         pdf.cell(0, 10, f"{rol}:", ln=True)
         
         pdf.set_font("helvetica", "", 10)
-        texto_limpio = msg["content"].encode('latin-1', 'replace').decode('latin-1')
+        
+        # ELIMINAMOS EMOJIS Y ASTERISCOS DE MARKDOWN PARA UN PDF LIMPIO
+        texto_limpio = msg["content"].encode('latin-1', 'ignore').decode('latin-1')
+        texto_limpio = texto_limpio.replace('**', '')
+        
         pdf.multi_cell(0, 6, texto_limpio)
         pdf.ln(4)
         
-    # ACÁ ESTÁ LA MAGIA: Convertimos explícitamente a "bytes"
     return bytes(pdf.output())
 
 # ==========================================
