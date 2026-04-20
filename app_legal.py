@@ -6,8 +6,8 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import os
 import zipfile
 import urllib.request
-import time  
-import json 
+import time
+import json
 import streamlit as st
 import extra_streamlit_components as stx
 from datetime import datetime, timedelta
