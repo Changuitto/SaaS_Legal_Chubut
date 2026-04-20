@@ -6,8 +6,8 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import os
 import zipfile
 import urllib.request
-import time
-import json
+import time  
+import json 
 import streamlit as st
 import extra_streamlit_components as stx
 from datetime import datetime, timedelta
@@ -15,6 +15,7 @@ from supabase import create_client, Client
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from fpdf import FPDF
 
 # 1. CONFIGURACIÓN DE PÁGINA Y ESTILO PROFESIONAL
 st.set_page_config(page_title="Chubut.IA - Jurisprudencia", page_icon="logo.png", layout="wide")
@@ -55,6 +56,38 @@ st.markdown("""
         }
     </style>
 """, unsafe_allow_html=True)
+
+# ==========================================
+# FUNCIÓN PARA GENERAR PDF
+# ==========================================
+def generar_pdf(historial, titulo_chat):
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Encabezado
+    pdf.set_font("helvetica", "B", 16)
+    pdf.cell(0, 10, "Reporte de Jurisprudencia - Chubut.IA", ln=True, align="C")
+    pdf.set_font("helvetica", "", 10)
+    pdf.cell(0, 10, f"Generado el: {(datetime.now() - timedelta(hours=3)).strftime('%d/%m/%Y %H:%M')}", ln=True, align="C")
+    pdf.ln(10)
+    
+    # Título de la consulta
+    pdf.set_font("helvetica", "B", 12)
+    pdf.multi_cell(0, 10, f"Consulta: {titulo_chat}")
+    pdf.ln(5)
+    
+    # Contenido del chat
+    for msg in historial:
+        rol = "Usuario" if msg["role"] == "user" else "Chubut.IA"
+        pdf.set_font("helvetica", "B", 10)
+        pdf.cell(0, 10, f"{rol}:", ln=True)
+        
+        pdf.set_font("helvetica", "", 10)
+        texto_limpio = msg["content"].encode('latin-1', 'replace').decode('latin-1')
+        pdf.multi_cell(0, 6, texto_limpio)
+        pdf.ln(4)
+        
+    return pdf.output()
 
 # ==========================================
 # 2. SISTEMA BLINDADO DE COOKIES EN LA RAÍZ
@@ -317,16 +350,13 @@ def pantalla_invitado():
             with st.chat_message(m["role"]): st.markdown(m["content"])
             
         st.markdown("---")
-        chat_str = f"--- CHUBUT.IA | REPORTE LEGAL ---\nFecha: {datetime.now().strftime('%d/%m/%Y')}\n\n"
-        for msg in st.session_state.guest_history:
-            rol = "👤 Usuario" if msg["role"] == "user" else "🤖 Chubut.IA"
-            chat_str += f"{rol}:\n{msg['content']}\n\n{'-'*40}\n\n"
-            
+        # DESCARGA EN PDF PARA INVITADO
+        pdf_bytes = generar_pdf(st.session_state.guest_history, "Chat de Prueba Invitado")
         st.download_button(
-            label="📄 Exportar chat a texto (TXT)",
-            data=chat_str,
-            file_name="Reporte_ChubutIA.txt",
-            mime="text/plain",
+            label="📄 Exportar chat a PDF",
+            data=pdf_bytes,
+            file_name="Reporte_ChubutIA.pdf",
+            mime="application/pdf",
             use_container_width=True
         )
 
@@ -369,7 +399,7 @@ def pantalla_chat():
     db_res = supabase.table("usuarios").select("*").eq("email", user.email).execute()
     datos = db_res.data[0]
     
-    # AJUSTE DE HORA PARA ARGENTINA (-3 HORAS)
+    # RELOJ AJUSTADO A ARGENTINA (-3 HORAS)
     hoy = (datetime.now() - timedelta(hours=3)).date()
     
     fecha_trial_formateada = ""
@@ -492,24 +522,22 @@ def pantalla_chat():
             with st.chat_message(m["role"]): st.markdown(m["content"])
             
         st.markdown("---")
-        chat_str = f"--- CHUBUT.IA | REPORTE LEGAL ---\nConsulta: {st.session_state.sesion_actual}\nFecha: {datetime.now().strftime('%d/%m/%Y')}\n\n"
-        for msg in chat_actual:
-            rol = "👤 Usuario" if msg["role"] == "user" else "🤖 Chubut.IA"
-            chat_str += f"{rol}:\n{msg['content']}\n\n{'-'*40}\n\n"
-            
+        # DESCARGA EN PDF PARA LOGUEADO
+        pdf_bytes = generar_pdf(chat_actual, st.session_state.sesion_actual)
         st.download_button(
-            label="📄 Exportar chat a texto (TXT)",
-            data=chat_str,
-            file_name=f"Reporte_{st.session_state.sesion_actual}.txt",
-            mime="text/plain",
+            label="📄 Exportar chat a PDF",
+            data=pdf_bytes,
+            file_name=f"Reporte_{st.session_state.sesion_actual}.pdf",
+            mime="application/pdf",
             use_container_width=True
         )
 
+    # LÓGICA DE VENCIMIENTO MOVIDA AL INPUT
     if not es_pro and not esta_en_trial:
         st.markdown(f"""
             <div style="text-align: center; padding: 20px; border: 2px solid #ef4444; border-radius: 15px; background-color: rgba(239, 68, 68, 0.1); margin-top: 20px;">
                 <h3 style="color: #ef4444; margin-top: 0;">Tu tiempo de acceso ha expirado</h3>
-                <p>Tu semana de prueba terminó. Activá el Plan Pro para seguir haciendo consultas.</p>
+                <p>Tu semana de prueba gratuita terminó. Activá el Plan Pro para seguir consultando jurisprudencia de Chubut.</p>
             </div>
         """, unsafe_allow_html=True)
     else:
