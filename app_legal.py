@@ -6,8 +6,8 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import os
 import zipfile
 import urllib.request
-import time  
-import json 
+import time
+import json
 import streamlit as st
 import extra_streamlit_components as stx
 from datetime import datetime, timedelta
@@ -203,7 +203,7 @@ def pantalla_acceso():
                         st.warning("⚠️ Completá ambos campos.")
 
             if st.session_state.get("login_exitoso"):
-                st.success("✅ ¡Pase VIP generado y guardado en tu navegador!")
+                st.success("✅ ¡Pase generado y guardado en tu navegador!")
                 st.info(" Hacé clic abajo para confirmar tu entrada.")
                 if st.button(" ENTRAR A MI CUENTA", type="primary", use_container_width=True):
                     st.session_state.user_data = st.session_state.temp_user
@@ -388,25 +388,7 @@ def pantalla_chat():
         venc_trial = datetime.strptime(datos["vencimiento_trial"], "%Y-%m-%d").date()
         if hoy <= venc_trial: esta_en_trial = True
 
-    if not es_pro and not esta_en_trial:
-        st.markdown(f"""
-            <div style="text-align: center; padding: 40px; border: 2px solid #ef4444; border-radius: 15px; background-color: rgba(239, 68, 68, 0.1);">
-                <h2 style="color: #ef4444;">Tu tiempo de acceso ha expirado</h2>
-                <p>Tu semana de prueba gratuita terminó. Activá el Plan Pro para seguir consultando jurisprudencia de Chubut.</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.link_button("🚀 Activar Plan Pro ($6.500 ARS)", "https://mpago.la/2nDaBRx", use_container_width=True)
-        
-        if st.button("Cerrar Sesión"):
-            supabase.auth.sign_out()
-            st.session_state.del_tokens = True
-            st.session_state.user_data = None
-            st.rerun()
-            
-        st.write("")
-        mostrar_soporte()
-        st.stop()
+    # SE REMOVIÓ EL BLOQUEO TOTAL (EL ST.STOP) DE ACÁ ARRIBA
 
     with st.sidebar:
         if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
@@ -416,7 +398,10 @@ def pantalla_chat():
         if es_pro: 
             st.warning(f"💎 Plan PRO hasta el {fecha_pro_formateada}")
         else: 
-            st.info(f"🎁 Prueba Gratis hasta el {fecha_trial_formateada}")
+            if esta_en_trial:
+                st.info(f"🎁 Prueba Gratis hasta el {fecha_trial_formateada}")
+            else:
+                st.error("❌ Cuenta Expirada")
         
         st.divider()
         
@@ -520,38 +505,47 @@ def pantalla_chat():
             use_container_width=True
         )
 
-    if prompt := st.chat_input("¿En qué puedo ayudarte hoy?"):
-        chat_actual.append({"role": "user", "content": prompt})
-        historial[st.session_state.sesion_actual] = chat_actual
-        supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
-        st.rerun()
+    # ACÁ ESTÁ EL CAMBIO: Si está expirado, mostramos el cartel rojo en lugar de dejarlo escribir
+    if not es_pro and not esta_en_trial:
+        st.markdown(f"""
+            <div style="text-align: center; padding: 20px; border: 2px solid #ef4444; border-radius: 15px; background-color: rgba(239, 68, 68, 0.1); margin-top: 20px;">
+                <h3 style="color: #ef4444; margin-top: 0;">Tu tiempo de acceso ha expirado</h3>
+                <p>Tu semana de prueba terminó. Activá el Plan Pro para seguir haciendo consultas.</p>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        if prompt := st.chat_input("¿En qué puedo ayudarte hoy?"):
+            chat_actual.append({"role": "user", "content": prompt})
+            historial[st.session_state.sesion_actual] = chat_actual
+            supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
+            st.rerun()
 
-    if chat_actual and chat_actual[-1]["role"] == "user":
-        with st.chat_message("assistant"):
-            with st.spinner("Analizando jurisprudencia..."):
-                docs = vdb.similarity_search(chat_actual[-1]["content"], k=6)
-                contexto_final = "\n\n".join([f"📅 FECHA: {d.metadata.get('fecha_completa')}\n🔗 URL: {d.metadata.get('link_pdf')}\n📄 CONTENIDO:\n{d.page_content}" for d in docs])
-                
-                mensajes = [SystemMessage(content=generar_instruccion_ia(contexto_final))]
-                for m in chat_actual[:-1]:
-                    mensajes.append(HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"]))
-                mensajes.append(HumanMessage(content=chat_actual[-1]["content"]))
-                
-                respuesta = llm.invoke(mensajes)
-                st.markdown(respuesta.content)
-                chat_actual.append({"role": "assistant", "content": respuesta.content})
-                
-                if st.session_state.sesion_actual.startswith("Consulta ") and len(chat_actual) == 2:
-                    try:
-                        tit_p = f"Resume esta consulta en 3 o 4 palabras: '{chat_actual[0]['content']}'"
-                        nuevo_titulo = llm.invoke([HumanMessage(content=tit_p)]).content.replace('"', '').strip()
-                        if nuevo_titulo in historial: nuevo_titulo += " (1)" 
-                        historial[nuevo_titulo] = historial.pop(st.session_state.sesion_actual)
-                        st.session_state.sesion_actual = nuevo_titulo
-                    except: pass
+        if chat_actual and chat_actual[-1]["role"] == "user":
+            with st.chat_message("assistant"):
+                with st.spinner("Analizando jurisprudencia..."):
+                    docs = vdb.similarity_search(chat_actual[-1]["content"], k=6)
+                    contexto_final = "\n\n".join([f"📅 FECHA: {d.metadata.get('fecha_completa')}\n🔗 URL: {d.metadata.get('link_pdf')}\n📄 CONTENIDO:\n{d.page_content}" for d in docs])
+                    
+                    mensajes = [SystemMessage(content=generar_instruccion_ia(contexto_final))]
+                    for m in chat_actual[:-1]:
+                        mensajes.append(HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"]))
+                    mensajes.append(HumanMessage(content=chat_actual[-1]["content"]))
+                    
+                    respuesta = llm.invoke(mensajes)
+                    st.markdown(respuesta.content)
+                    chat_actual.append({"role": "assistant", "content": respuesta.content})
+                    
+                    if st.session_state.sesion_actual.startswith("Consulta ") and len(chat_actual) == 2:
+                        try:
+                            tit_p = f"Resume esta consulta en 3 o 4 palabras: '{chat_actual[0]['content']}'"
+                            nuevo_titulo = llm.invoke([HumanMessage(content=tit_p)]).content.replace('"', '').strip()
+                            if nuevo_titulo in historial: nuevo_titulo += " (1)" 
+                            historial[nuevo_titulo] = historial.pop(st.session_state.sesion_actual)
+                            st.session_state.sesion_actual = nuevo_titulo
+                        except: pass
 
-                supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
-                st.rerun()
+                    supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
+                    st.rerun()
 
 # ==========================================
 # GESTOR CENTRAL DE PANTALLAS (RUTEADOR)
