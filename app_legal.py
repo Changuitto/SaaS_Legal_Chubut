@@ -6,8 +6,8 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import os
 import zipfile
 import urllib.request
-import time
-import json
+import time  
+import json 
 import streamlit as st
 import extra_streamlit_components as stx
 from datetime import datetime, timedelta
@@ -203,7 +203,7 @@ def pantalla_acceso():
                         st.warning("⚠️ Completá ambos campos.")
 
             if st.session_state.get("login_exitoso"):
-                st.success("✅ ¡Pase generado y guardado en tu navegador!")
+                st.success("✅ ¡Pase VIP generado y guardado en tu navegador!")
                 st.info(" Hacé clic abajo para confirmar tu entrada.")
                 if st.button(" ENTRAR A MI CUENTA", type="primary", use_container_width=True):
                     st.session_state.user_data = st.session_state.temp_user
