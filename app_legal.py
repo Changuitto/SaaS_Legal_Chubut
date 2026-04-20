@@ -83,12 +83,12 @@ def generar_pdf(historial, titulo_chat):
         pdf.cell(0, 10, f"{rol}:", ln=True)
         
         pdf.set_font("helvetica", "", 10)
-        # Limpieza de caracteres especiales para evitar errores en PDF
         texto_limpio = msg["content"].encode('latin-1', 'replace').decode('latin-1')
         pdf.multi_cell(0, 6, texto_limpio)
         pdf.ln(4)
         
-    return pdf.output()
+    # ACÁ ESTÁ LA MAGIA: Convertimos explícitamente a "bytes"
+    return bytes(pdf.output())
 
 # ==========================================
 # 2. SISTEMA BLINDADO DE COOKIES EN LA RAÍZ
