@@ -158,7 +158,7 @@ def mostrar_soporte():
 def verificar_pago_entrante(user_email):
     params = st.query_params
     if params.get("status") == "approved" and st.session_state.user_data:
-        venc_pro = (datetime.now() + timedelta(days=30)).date()
+        venc_pro = (datetime.now() - timedelta(hours=3)).date() + timedelta(days=30)
         supabase.table("usuarios").update({
             "plan": "pro",
             "vencimiento_pro": str(venc_pro)
@@ -237,7 +237,7 @@ def pantalla_acceso():
                             st.error("⚠️ Este correo electrónico ya está registrado.")
                         else:
                             try:
-                                venc_trial = (datetime.now() + timedelta(days=7)).date()
+                                venc_trial = (datetime.now() - timedelta(hours=3)).date() + timedelta(days=7)
                                 supabase.auth.sign_up({"email": new_email.strip(), "password": new_pass, "options": {"data": {"display_name": new_user}}})
                                 supabase.table("usuarios").insert({
                                     "usuario": new_user, "email": new_email.strip(), "plan": "gratis",
@@ -368,7 +368,9 @@ def pantalla_chat():
     verificar_pago_entrante(user.email)
     db_res = supabase.table("usuarios").select("*").eq("email", user.email).execute()
     datos = db_res.data[0]
-    hoy = datetime.now().date()
+    
+    # AJUSTE DE HORA PARA ARGENTINA (-3 HORAS)
+    hoy = (datetime.now() - timedelta(hours=3)).date()
     
     fecha_trial_formateada = ""
     if datos.get("vencimiento_trial"):
@@ -387,8 +389,6 @@ def pantalla_chat():
     if not es_pro and datos.get("vencimiento_trial"):
         venc_trial = datetime.strptime(datos["vencimiento_trial"], "%Y-%m-%d").date()
         if hoy <= venc_trial: esta_en_trial = True
-
-    # SE REMOVIÓ EL BLOQUEO TOTAL (EL ST.STOP) DE ACÁ ARRIBA
 
     with st.sidebar:
         if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
@@ -505,7 +505,6 @@ def pantalla_chat():
             use_container_width=True
         )
 
-    # ACÁ ESTÁ EL CAMBIO: Si está expirado, mostramos el cartel rojo en lugar de dejarlo escribir
     if not es_pro and not esta_en_trial:
         st.markdown(f"""
             <div style="text-align: center; padding: 20px; border: 2px solid #ef4444; border-radius: 15px; background-color: rgba(239, 68, 68, 0.1); margin-top: 20px;">
