@@ -20,40 +20,40 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 st.set_page_config(page_title="Chubut.IA - Jurisprudencia", page_icon="logo.png", layout="wide")
 
 st.markdown("""
-    <style>
-        footer {visibility: hidden;}
-        [data-testid="stSidebar"] .stButton>button { 
-            width: 100%; border-radius: 8px; text-align: left; padding-left: 10px; 
-            background-color: transparent; border: 1px solid rgba(128, 128, 128, 0.3); 
-            color: inherit; transition: all 0.2s ease-in-out;
-        }
-        [data-testid="stSidebar"] .stButton>button:hover {
-            border-color: rgba(128, 128, 128, 0.8); background-color: rgba(128, 128, 128, 0.1);
-        }
-        div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-assistant"]) {
-            border: 1px solid rgba(128, 128, 128, 0.2); border-radius: 20px 20px 20px 2px;
-            padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-        div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-user"]) {
-            background-color: #1E3A8A !important; border-radius: 20px 20px 2px 20px;
-            padding: 1.2rem; margin-bottom: 1rem; margin-left: auto;
-        }
-        div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-user"]) * { color: white !important; }
-        .botones-sugerencia button {
-            border: 1px solid #4B5563 !important;
-            border-radius: 10px !important;
-            padding: 10px !important;
-            text-align: center !important;
-            background-color: transparent !important;
-            color: #9CA3AF !important;
-            transition: all 0.2s !important;
-        }
-        .botones-sugerencia button:hover {
-            border-color: #60A5FA !important;
-            color: white !important;
-            background-color: rgba(96, 165, 250, 0.1) !important;
-        }
-    </style>
+    <style>
+        footer {visibility: hidden;}
+        [data-testid="stSidebar"] .stButton>button { 
+            width: 100%; border-radius: 8px; text-align: left; padding-left: 10px; 
+            background-color: transparent; border: 1px solid rgba(128, 128, 128, 0.3); 
+            color: inherit; transition: all 0.2s ease-in-out;
+        }
+        [data-testid="stSidebar"] .stButton>button:hover {
+            border-color: rgba(128, 128, 128, 0.8); background-color: rgba(128, 128, 128, 0.1);
+        }
+        div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-assistant"]) {
+            border: 1px solid rgba(128, 128, 128, 0.2); border-radius: 20px 20px 20px 2px;
+            padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-user"]) {
+            background-color: #1E3A8A !important; border-radius: 20px 20px 2px 20px;
+            padding: 1.2rem; margin-bottom: 1rem; margin-left: auto;
+        }
+        div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-user"]) * { color: white !important; }
+        .botones-sugerencia button {
+            border: 1px solid #4B5563 !important;
+            border-radius: 10px !important;
+            padding: 10px !important;
+            text-align: center !important;
+            background-color: transparent !important;
+            color: #9CA3AF !important;
+            transition: all 0.2s !important;
+        }
+        .botones-sugerencia button:hover {
+            border-color: #60A5FA !important;
+            color: white !important;
+            background-color: rgba(96, 165, 250, 0.1) !important;
+        }
+    </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
@@ -62,23 +62,23 @@ st.markdown("""
 cookie_manager = stx.CookieManager(key="gestor_chubut")
 
 if "set_refresh_token" in st.session_state:
-    vencimiento = datetime.now() + timedelta(days=30)
-    cookie_manager.set("chubut_refresh", st.session_state.set_refresh_token, expires_at=vencimiento, key="set_ref_root")
-    del st.session_state.set_refresh_token
+    vencimiento = datetime.now() + timedelta(days=30)
+    cookie_manager.set("chubut_refresh", st.session_state.set_refresh_token, expires_at=vencimiento, key="set_ref_root")
+    del st.session_state.set_refresh_token
 
 if "del_tokens" in st.session_state:
-    cookie_manager.delete("chubut_refresh", key="del_ref_root")
-    del st.session_state.del_tokens
+    cookie_manager.delete("chubut_refresh", key="del_ref_root")
+    del st.session_state.del_tokens
 
 if "set_invitado" in st.session_state:
-    vencimiento_inv = datetime.now() + timedelta(days=365)
-    cookie_manager.set("chubut_invitado", str(st.session_state.set_invitado), expires_at=vencimiento_inv, key="set_inv_root")
-    del st.session_state.set_invitado
+    vencimiento_inv = datetime.now() + timedelta(days=365)
+    cookie_manager.set("chubut_invitado", str(st.session_state.set_invitado), expires_at=vencimiento_inv, key="set_inv_root")
+    del st.session_state.set_invitado
 
 mis_cookies = cookie_manager.get_all()
 if mis_cookies is None:
-    st.markdown("<h3 style='text-align: center; color: gray; margin-top: 20vh;'>🔄 Sincronizando entorno seguro...</h3>", unsafe_allow_html=True)
-    st.stop()
+    st.markdown("<h3 style='text-align: center; color: gray; margin-top: 20vh;'>🔄 Sincronizando entorno seguro...</h3>", unsafe_allow_html=True)
+    st.stop()
 
 # ==========================================
 # 3. VARIABLES DE ENTORNO Y SERVICIOS
@@ -88,24 +88,24 @@ SUPABASE_URL = os.getenv("SUPABASE_URL") or st.secrets.get("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY") or st.secrets.get("SUPABASE_KEY")
 
 if not OPENAI_KEY or not SUPABASE_URL or not SUPABASE_KEY:
-    st.error("🚨 Error crítico: Faltan variables de configuración en Railway.")
-    st.stop()
+    st.error("🚨 Error crítico: Faltan variables de configuración en Railway.")
+    st.stop()
 else:
-    os.environ["OPENAI_API_KEY"] = OPENAI_KEY
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    os.environ["OPENAI_API_KEY"] = OPENAI_KEY
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-if "user_data" not in st.session_state: 
-    st.session_state.user_data = None
+if "user_data" not in st.session_state: 
+    st.session_state.user_data = None
 
 token_guardado = mis_cookies.get("chubut_refresh")
 
 if token_guardado and st.session_state.user_data is None:
-    try:
-        res = supabase.auth.refresh_session(token_guardado)
-        st.session_state.user_data = res.user
-        st.session_state.set_refresh_token = res.session.refresh_token
-    except Exception:
-        pass 
+    try:
+        res = supabase.auth.refresh_session(token_guardado)
+        st.session_state.user_data = res.user
+        st.session_state.set_refresh_token = res.session.refresh_token
+    except Exception:
+        pass 
 
 if "show_login" not in st.session_state: st.session_state.show_login = False
 if "guest_history" not in st.session_state: st.session_state.guest_history = []
@@ -113,13 +113,13 @@ if "consultas_gastadas" not in st.session_state: st.session_state.consultas_gast
 
 galleta_invitado = mis_cookies.get("chubut_invitado")
 if galleta_invitado:
-    st.session_state.consultas_gastadas = max(st.session_state.consultas_gastadas, int(galleta_invitado))
+    st.session_state.consultas_gastadas = max(st.session_state.consultas_gastadas, int(galleta_invitado))
 
 # ==========================================
 # INSTRUCCIÓN PARA LA IA (NUEVO COMPORTAMIENTO FLEXIBLE Y ANALÍTICO)
 # ==========================================
 def generar_instruccion_ia(contexto):
-    return f"""Sos Chubut.IA, un asistente jurídico experto enfocado exclusivamente en la jurisprudencia de la Provincia de Chubut.
+    return f"""Sos Chubut.IA, un asistente jurídico experto enfocado exclusivamente en la jurisprudencia de la Provincia de Chubut.
 
 CONTEXTO DE LA BASE DE DATOS (EUREKA):
 {contexto}
@@ -141,130 +141,130 @@ DIRECTRICES DE COMPORTAMIENTO:
 # DESCARGO DE RESPONSABILIDAD LEGAL Y SOPORTE
 # ==========================================
 def mostrar_disclaimer():
-    st.markdown("""
-        <div style="font-size: 0.75rem; color: #6B7280; text-align: center; margin-top: 30px; padding: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
-            ⚠️ <i>Chubut.IA es una herramienta de asistencia basada en IA. Los fallos mostrados deben ser verificados en sus fuentes oficiales y no reemplazan el asesoramiento legal profesional.</i>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""
+        <div style="font-size: 0.75rem; color: #6B7280; text-align: center; margin-top: 30px; padding: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+            ⚠️ <i>Chubut.IA es una herramienta de asistencia basada en IA. Los fallos mostrados deben ser verificados en sus fuentes oficiales y no reemplazan el asesoramiento legal profesional.</i>
+        </div>
+    """, unsafe_allow_html=True)
 
 def mostrar_soporte():
-    st.markdown("""
-        <div style="text-align: center; font-size: 0.8rem; color: #9CA3AF; margin-top: 10px; padding-bottom: 15px;">
-            ¿Necesitás ayuda? Contactá al soporte:<br>
-            <a href="mailto:chubutiaoficial@gmail.com" style="color: #60A5FA; text-decoration: none; font-weight: bold;">📧 chubutiaoficial@gmail.com</a>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""
+        <div style="text-align: center; font-size: 0.8rem; color: #9CA3AF; margin-top: 10px; padding-bottom: 15px;">
+            ¿Necesitás ayuda? Contactá al soporte:<br>
+            <a href="mailto:chubutiaoficial@gmail.com" style="color: #60A5FA; text-decoration: none; font-weight: bold;">📧 chubutiaoficial@gmail.com</a>
+        </div>
+    """, unsafe_allow_html=True)
 
 def verificar_pago_entrante(user_email):
-    params = st.query_params
-    if params.get("status") == "approved" and st.session_state.user_data:
-        venc_pro = (datetime.now() + timedelta(days=30)).date()
-        supabase.table("usuarios").update({
-            "plan": "pro",
-            "vencimiento_pro": str(venc_pro)
-        }).eq("email", user_email).execute()
-        st.success("¡Pago procesado con éxito! Tu Plan Pro está activo por 30 días.")
-        st.query_params.clear()
+    params = st.query_params
+    if params.get("status") == "approved" and st.session_state.user_data:
+        venc_pro = (datetime.now() + timedelta(days=30)).date()
+        supabase.table("usuarios").update({
+            "plan": "pro",
+            "vencimiento_pro": str(venc_pro)
+        }).eq("email", user_email).execute()
+        st.success("¡Pago procesado con éxito! Tu Plan Pro está activo por 30 días.")
+        st.query_params.clear()
 
 # ==========================================
 # PANTALLA DE ACCESO (LOGIN / REGISTRO)
 # ==========================================
 def pantalla_acceso():
-    if st.button("⬅️ Volver al Chat de Prueba"):
-        st.session_state.show_login = False
-        st.rerun()
+    if st.button("⬅️ Volver al Chat de Prueba"):
+        st.session_state.show_login = False
+        st.rerun()
 
-    col1, col2, col3 = st.columns([1, 1.8, 1])
-    with col2:
-        if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
-        st.markdown("<h3 style='text-align: center;'>Acceso al Sistema</h3>", unsafe_allow_html=True)
-        tab_in, tab_reg = st.tabs(["🔑 Entrar", "📝 Registrarse"])
-        
-        with tab_in:
-            if not st.session_state.get("login_exitoso"):
-                with st.form("form_login", clear_on_submit=False):
-                    email = st.text_input("Email")
-                    password = st.text_input("Contraseña", type="password")
-                    btn_login = st.form_submit_button("Iniciar Sesión", use_container_width=True)
+    col1, col2, col3 = st.columns([1, 1.8, 1])
+    with col2:
+        if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
+        st.markdown("<h3 style='text-align: center;'>Acceso al Sistema</h3>", unsafe_allow_html=True)
+        tab_in, tab_reg = st.tabs(["🔑 Entrar", "📝 Registrarse"])
+        
+        with tab_in:
+            if not st.session_state.get("login_exitoso"):
+                with st.form("form_login", clear_on_submit=False):
+                    email = st.text_input("Email")
+                    password = st.text_input("Contraseña", type="password")
+                    btn_login = st.form_submit_button("Iniciar Sesión", use_container_width=True)
 
-                if btn_login:
-                    if email and password:
-                        with st.spinner("Autenticando..."):
-                            try:
-                                res = supabase.auth.sign_in_with_password({"email": email.strip(), "password": password})
-                                
-                                st.session_state.temp_user = res.user
-                                st.session_state.set_refresh_token = res.session.refresh_token
-                                st.session_state.login_exitoso = True
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"❌ Error al iniciar sesión. Verificá tus credenciales o si confirmaste tu email.")
-                    else:
-                        st.warning("⚠️ Completá ambos campos.")
+                if btn_login:
+                    if email and password:
+                        with st.spinner("Autenticando..."):
+                            try:
+                                res = supabase.auth.sign_in_with_password({"email": email.strip(), "password": password})
+                                
+                                st.session_state.temp_user = res.user
+                                st.session_state.set_refresh_token = res.session.refresh_token
+                                st.session_state.login_exitoso = True
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ Error al iniciar sesión. Verificá tus credenciales o si confirmaste tu email.")
+                    else:
+                        st.warning("⚠️ Completá ambos campos.")
 
-            if st.session_state.get("login_exitoso"):
-                st.success("✅ ¡Pase generado y guardado en tu navegador!")
-                st.info(" Hacé clic abajo para confirmar tu entrada.")
-                if st.button(" ENTRAR A MI CUENTA", type="primary", use_container_width=True):
-                    st.session_state.user_data = st.session_state.temp_user
-                    st.session_state.show_login = False
-                    st.session_state.login_exitoso = False
-                    st.rerun()
+            if st.session_state.get("login_exitoso"):
+                st.success("✅ ¡Pase generado y guardado en tu navegador!")
+                st.info(" Hacé clic abajo para confirmar tu entrada.")
+                if st.button(" ENTRAR A MI CUENTA", type="primary", use_container_width=True):
+                    st.session_state.user_data = st.session_state.temp_user
+                    st.session_state.show_login = False
+                    st.session_state.login_exitoso = False
+                    st.rerun()
 
-        with tab_reg:
-            with st.form("form_registro", clear_on_submit=False):
-                new_user = st.text_input("Nombre y Apellido")
-                new_email = st.text_input("Correo Electrónico")
-                new_pass = st.text_input("Crea una contraseña", type="password")
-                confirm_pass = st.text_input("Confirmar contraseña", type="password")
-                btn_reg = st.form_submit_button("Crear Cuenta", use_container_width=True)
-                
-            if btn_reg:
-                if not new_user or not new_email or not new_pass or not confirm_pass:
-                    st.warning("⚠️ Por favor, completá todos los campos.")
-                elif new_pass != confirm_pass:
-                    st.error("❌ Las contraseñas no coinciden.")
-                elif len(new_pass) < 6:
-                    st.error("❌ La contraseña debe tener al menos 6 caracteres.")
-                else:
-                    with st.spinner("Creando cuenta..."):
-                        check_user = supabase.table("usuarios").select("usuario").eq("usuario", new_user).execute()
-                        check_email = supabase.table("usuarios").select("email").eq("email", new_email.strip()).execute()
-                        
-                        if len(check_user.data) > 0:
-                            st.error("⚠️ Ese Nombre ya está en uso.")
-                        elif len(check_email.data) > 0:
-                            st.error("⚠️ Este correo electrónico ya está registrado.")
-                        else:
-                            try:
-                                venc_trial = (datetime.now() + timedelta(days=7)).date()
-                                supabase.auth.sign_up({"email": new_email.strip(), "password": new_pass, "options": {"data": {"display_name": new_user}}})
-                                supabase.table("usuarios").insert({
-                                    "usuario": new_user, "email": new_email.strip(), "plan": "gratis",
-                                    "vencimiento_trial": str(venc_trial), "historial": {"Nueva Consulta": []}
-                                }).execute()
-                                st.success("✅ ¡Cuenta creada con éxito! POR FAVOR: Revisá tu correo electrónico (y tu carpeta de Spam) para confirmar tu cuenta antes de iniciar sesión.")
-                            except Exception as e: 
-                                st.error(f"Error técnico: {e}")
-                                
-        st.write("")
-        st.write("")
-        mostrar_soporte()
+        with tab_reg:
+            with st.form("form_registro", clear_on_submit=False):
+                new_user = st.text_input("Nombre y Apellido")
+                new_email = st.text_input("Correo Electrónico")
+                new_pass = st.text_input("Crea una contraseña", type="password")
+                confirm_pass = st.text_input("Confirmar contraseña", type="password")
+                btn_reg = st.form_submit_button("Crear Cuenta", use_container_width=True)
+                
+            if btn_reg:
+                if not new_user or not new_email or not new_pass or not confirm_pass:
+                    st.warning("⚠️ Por favor, completá todos los campos.")
+                elif new_pass != confirm_pass:
+                    st.error("❌ Las contraseñas no coinciden.")
+                elif len(new_pass) < 6:
+                    st.error("❌ La contraseña debe tener al menos 6 caracteres.")
+                else:
+                    with st.spinner("Creando cuenta..."):
+                        check_user = supabase.table("usuarios").select("usuario").eq("usuario", new_user).execute()
+                        check_email = supabase.table("usuarios").select("email").eq("email", new_email.strip()).execute()
+                        
+                        if len(check_user.data) > 0:
+                            st.error("⚠️ Ese Nombre ya está en uso.")
+                        elif len(check_email.data) > 0:
+                            st.error("⚠️ Este correo electrónico ya está registrado.")
+                        else:
+                            try:
+                                venc_trial = (datetime.now() + timedelta(days=7)).date()
+                                supabase.auth.sign_up({"email": new_email.strip(), "password": new_pass, "options": {"data": {"display_name": new_user}}})
+                                supabase.table("usuarios").insert({
+                                    "usuario": new_user, "email": new_email.strip(), "plan": "gratis",
+                                    "vencimiento_trial": str(venc_trial), "historial": {"Nueva Consulta": []}
+                                }).execute()
+                                st.success("✅ ¡Cuenta creada con éxito! POR FAVOR: Revisá tu correo electrónico (y tu carpeta de Spam) para confirmar tu cuenta antes de iniciar sesión.")
+                            except Exception as e: 
+                                st.error(f"Error técnico: {e}")
+                                
+        st.write("")
+        st.write("")
+        mostrar_soporte()
 
 # ==========================================
 # CEREBRO GLOBAL (DESCARGA DIRECTA DE GITHUB RELEASES)
 # ==========================================
 @st.cache_resource(show_spinner="Conectando el cerebro jurídico de Chubut (Puede demorar unos minutos)...")
 def load_ia():
-    if not os.path.exists("MI_BASE_VECTORIAL"):
-        url_directa = "https://github.com/ChubutIA/SaaS_Legal_Chubut/releases/download/v1.0/MI_BASE_VECTORIAL.zip"
-        urllib.request.urlretrieve(url_directa, "base.zip")
-        with zipfile.ZipFile("base.zip", 'r') as zr: 
-            zr.extractall()
-    
-    emb = OpenAIEmbeddings(model="text-embedding-3-small")
-    vdb = Chroma(persist_directory="MI_BASE_VECTORIAL", embedding_function=emb)
-    return vdb, ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
+    if not os.path.exists("MI_BASE_VECTORIAL"):
+        url_directa = "https://github.com/ChubutIA/SaaS_Legal_Chubut/releases/download/v1.0/MI_BASE_VECTORIAL.zip"
+        urllib.request.urlretrieve(url_directa, "base.zip")
+        with zipfile.ZipFile("base.zip", 'r') as zr: 
+            zr.extractall()
+    
+    emb = OpenAIEmbeddings(model="text-embedding-3-small")
+    vdb = Chroma(persist_directory="MI_BASE_VECTORIAL", embedding_function=emb)
+    return vdb, ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
 
 vdb, llm = load_ia()
 
@@ -272,293 +272,293 @@ vdb, llm = load_ia()
 # PANTALLA MODO INVITADO (LÍMITE: 5 CONSULTAS)
 # ==========================================
 def pantalla_invitado():
-    consultas_restantes = 5 - st.session_state.consultas_gastadas
+    consultas_restantes = 5 - st.session_state.consultas_gastadas
 
-    with st.sidebar:
-        if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
-        st.divider()
-        st.markdown("👤 **Modo Invitado**")
-        st.info(f"🎁 Consultas de prueba: {max(0, consultas_restantes)} / 5")
-        st.divider()
-        if st.button("🔑 Iniciar Sesión / Registrarse", type="primary", use_container_width=True):
-            st.session_state.show_login = True
-            st.rerun()
-        mostrar_disclaimer()
-        mostrar_soporte()
+    with st.sidebar:
+        if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
+        st.divider()
+        st.markdown("👤 **Modo Invitado**")
+        st.info(f"🎁 Consultas de prueba: {max(0, consultas_restantes)} / 5")
+        st.divider()
+        if st.button("🔑 Iniciar Sesión / Registrarse", type="primary", use_container_width=True):
+            st.session_state.show_login = True
+            st.rerun()
+        mostrar_disclaimer()
+        mostrar_soporte()
 
-    if not st.session_state.guest_history:
-        st.markdown("""
-            <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 40vh; text-align: center;">
-                <h1 style="font-size: 3rem; font-weight: 600;">Probalo gratis, sin registrarte.</h1>
-                <p style="font-size: 1.2rem; color: gray;">Hacé una consulta legal sobre Chubut para ver cómo funciona.</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0.9rem; margin-top: 20px;'>💡 Pruebe con alguna de estas sugerencias:</p>", unsafe_allow_html=True)
-        st.markdown("<div class='botones-sugerencia'>", unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
-        if c1.button("⚖️ Fallos sobre cuota alimentaria", use_container_width=True):
-            st.session_state.guest_history.append({"role": "user", "content": "Mostrame fallos recientes sobre cuota alimentaria"})
-            st.rerun()
-        if c2.button("🚗 Jurisprudencia en accidentes de tránsito", use_container_width=True):
-            st.session_state.guest_history.append({"role": "user", "content": "Mostrame jurisprudencia sobre accidentes de tránsito"})
-            st.rerun()
-        c3, c4 = st.columns(2)
-        if c3.button("🏢 Fallos por despidos sin causa", use_container_width=True):
-            st.session_state.guest_history.append({"role": "user", "content": "Busca fallos sobre despidos sin causa justificada"})
-            st.rerun()
-        if c4.button("🏥 Mala praxis médica", use_container_width=True):
-            st.session_state.guest_history.append({"role": "user", "content": "Busca fallos relacionados con mala praxis médica"})
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
-            
-    else:
-        for m in st.session_state.guest_history:
-            with st.chat_message(m["role"]): st.markdown(m["content"])
-            
-        st.markdown("---")
-        chat_str = f"--- CHUBUT.IA | REPORTE LEGAL ---\nFecha: {datetime.now().strftime('%d/%m/%Y')}\n\n"
-        for msg in st.session_state.guest_history:
-            rol = "👤 Usuario" if msg["role"] == "user" else "🤖 Chubut.IA"
-            chat_str += f"{rol}:\n{msg['content']}\n\n{'-'*40}\n\n"
-            
-        st.download_button(
-            label="📄 Exportar chat a texto (TXT)",
-            data=chat_str,
-            file_name="Reporte_ChubutIA.txt",
-            mime="text/plain",
-            use_container_width=True
-        )
+    if not st.session_state.guest_history:
+        st.markdown("""
+            <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 40vh; text-align: center;">
+                <h1 style="font-size: 3rem; font-weight: 600;">Probalo gratis, sin registrarte.</h1>
+                <p style="font-size: 1.2rem; color: gray;">Hacé una consulta legal sobre Chubut para ver cómo funciona.</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0.9rem; margin-top: 20px;'>💡 Pruebe con alguna de estas sugerencias:</p>", unsafe_allow_html=True)
+        st.markdown("<div class='botones-sugerencia'>", unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        if c1.button("⚖️ Fallos sobre cuota alimentaria", use_container_width=True):
+            st.session_state.guest_history.append({"role": "user", "content": "Mostrame fallos recientes sobre cuota alimentaria"})
+            st.rerun()
+        if c2.button("🚗 Jurisprudencia en accidentes de tránsito", use_container_width=True):
+            st.session_state.guest_history.append({"role": "user", "content": "Mostrame jurisprudencia sobre accidentes de tránsito"})
+            st.rerun()
+        c3, c4 = st.columns(2)
+        if c3.button("🏢 Fallos por despidos sin causa", use_container_width=True):
+            st.session_state.guest_history.append({"role": "user", "content": "Busca fallos sobre despidos sin causa justificada"})
+            st.rerun()
+        if c4.button("🏥 Mala praxis médica", use_container_width=True):
+            st.session_state.guest_history.append({"role": "user", "content": "Busca fallos relacionados con mala praxis médica"})
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+            
+    else:
+        for m in st.session_state.guest_history:
+            with st.chat_message(m["role"]): st.markdown(m["content"])
+            
+        st.markdown("---")
+        chat_str = f"--- CHUBUT.IA | REPORTE LEGAL ---\nFecha: {datetime.now().strftime('%d/%m/%Y')}\n\n"
+        for msg in st.session_state.guest_history:
+            rol = "👤 Usuario" if msg["role"] == "user" else "🤖 Chubut.IA"
+            chat_str += f"{rol}:\n{msg['content']}\n\n{'-'*40}\n\n"
+            
+        st.download_button(
+            label="📄 Exportar chat a texto (TXT)",
+            data=chat_str,
+            file_name="Reporte_ChubutIA.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
 
-    if st.session_state.consultas_gastadas >= 5:
-        st.warning("⚠️ Alcanzaste el límite de 5 consultas gratuitas.")
-        if st.button("🚀 Crear cuenta gratis de 7 días para continuar", type="primary", use_container_width=True):
-            st.session_state.show_login = True
-            st.rerun()
-    else:
-        if prompt := st.chat_input("Ej: ¿Qué dice la jurisprudencia sobre alimentos?"):
-            st.session_state.guest_history.append({"role": "user", "content": prompt})
-            st.rerun()
+    if st.session_state.consultas_gastadas >= 5:
+        st.warning("⚠️ Alcanzaste el límite de 5 consultas gratuitas.")
+        if st.button("🚀 Crear cuenta gratis de 7 días para continuar", type="primary", use_container_width=True):
+            st.session_state.show_login = True
+            st.rerun()
+    else:
+        if prompt := st.chat_input("Ej: ¿Qué dice la jurisprudencia sobre alimentos?"):
+            st.session_state.guest_history.append({"role": "user", "content": prompt})
+            st.rerun()
 
-    if st.session_state.guest_history and st.session_state.guest_history[-1]["role"] == "user":
-        with st.chat_message("assistant"):
-            with st.spinner("Buscando jurisprudencia..."):
-                docs = vdb.similarity_search(st.session_state.guest_history[-1]["content"], k=6)
-                contexto_final = "\n\n".join([f"📅 FECHA: {d.metadata.get('fecha_completa')}\n🔗 URL: {d.metadata.get('link_pdf')}\n📄 CONTENIDO:\n{d.page_content}" for d in docs])
-                
-                mensajes = [SystemMessage(content=generar_instruccion_ia(contexto_final))]
-                
-                for m in st.session_state.guest_history[:-1]:
-                    mensajes.append(HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"]))
-                mensajes.append(HumanMessage(content=st.session_state.guest_history[-1]["content"]))
-                
-                respuesta = llm.invoke(mensajes)
-                st.markdown(respuesta.content)
-                st.session_state.guest_history.append({"role": "assistant", "content": respuesta.content})
-                
-                st.session_state.consultas_gastadas += 1
-                st.session_state.set_invitado = st.session_state.consultas_gastadas
-                st.rerun() 
+    if st.session_state.guest_history and st.session_state.guest_history[-1]["role"] == "user":
+        with st.chat_message("assistant"):
+            with st.spinner("Buscando jurisprudencia..."):
+                docs = vdb.similarity_search(st.session_state.guest_history[-1]["content"], k=6)
+                contexto_final = "\n\n".join([f"📅 FECHA: {d.metadata.get('fecha_completa')}\n🔗 URL: {d.metadata.get('link_pdf')}\n📄 CONTENIDO:\n{d.page_content}" for d in docs])
+                
+                mensajes = [SystemMessage(content=generar_instruccion_ia(contexto_final))]
+                
+                for m in st.session_state.guest_history[:-1]:
+                    mensajes.append(HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"]))
+                mensajes.append(HumanMessage(content=st.session_state.guest_history[-1]["content"]))
+                
+                respuesta = llm.invoke(mensajes)
+                st.markdown(respuesta.content)
+                st.session_state.guest_history.append({"role": "assistant", "content": respuesta.content})
+                
+                st.session_state.consultas_gastadas += 1
+                st.session_state.set_invitado = st.session_state.consultas_gastadas
+                st.rerun() 
 
 # ==========================================
 # PANTALLA DE CHAT (LOGUEADOS)
 # ==========================================
 def pantalla_chat():
-    user = st.session_state.user_data
-    verificar_pago_entrante(user.email)
-    db_res = supabase.table("usuarios").select("*").eq("email", user.email).execute()
-    datos = db_res.data[0]
-    hoy = datetime.now().date()
-    
-    fecha_trial_formateada = ""
-    if datos.get("vencimiento_trial"):
-        fecha_trial_formateada = datetime.strptime(datos["vencimiento_trial"], "%Y-%m-%d").strftime("%d/%m/%Y")
+    user = st.session_state.user_data
+    verificar_pago_entrante(user.email)
+    db_res = supabase.table("usuarios").select("*").eq("email", user.email).execute()
+    datos = db_res.data[0]
+    hoy = datetime.now().date()
+    
+    fecha_trial_formateada = ""
+    if datos.get("vencimiento_trial"):
+        fecha_trial_formateada = datetime.strptime(datos["vencimiento_trial"], "%Y-%m-%d").strftime("%d/%m/%Y")
 
-    fecha_pro_formateada = ""
-    if datos.get("vencimiento_pro"):
-        fecha_pro_formateada = datetime.strptime(datos["vencimiento_pro"], "%Y-%m-%d").strftime("%d/%m/%Y")
+    fecha_pro_formateada = ""
+    if datos.get("vencimiento_pro"):
+        fecha_pro_formateada = datetime.strptime(datos["vencimiento_pro"], "%Y-%m-%d").strftime("%d/%m/%Y")
 
-    es_pro = False
-    if datos.get("plan") == "pro" and datos.get("vencimiento_pro"):
-        venc_pro = datetime.strptime(datos["vencimiento_pro"], "%Y-%m-%d").date()
-        if hoy <= venc_pro: es_pro = True
+    es_pro = False
+    if datos.get("plan") == "pro" and datos.get("vencimiento_pro"):
+        venc_pro = datetime.strptime(datos["vencimiento_pro"], "%Y-%m-%d").date()
+        if hoy <= venc_pro: es_pro = True
 
-    esta_en_trial = False
-    if not es_pro and datos.get("vencimiento_trial"):
-        venc_trial = datetime.strptime(datos["vencimiento_trial"], "%Y-%m-%d").date()
-        if hoy <= venc_trial: esta_en_trial = True
+    esta_en_trial = False
+    if not es_pro and datos.get("vencimiento_trial"):
+        venc_trial = datetime.strptime(datos["vencimiento_trial"], "%Y-%m-%d").date()
+        if hoy <= venc_trial: esta_en_trial = True
 
-    if not es_pro and not esta_en_trial:
-        st.markdown(f"""
-            <div style="text-align: center; padding: 40px; border: 2px solid #ef4444; border-radius: 15px; background-color: rgba(239, 68, 68, 0.1);">
-                <h2 style="color: #ef4444;">Tu tiempo de acceso ha expirado</h2>
-                <p>Tu semana de prueba gratuita terminó. Activá el Plan Pro para seguir consultando jurisprudencia de Chubut.</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.link_button("🚀 Activar Plan Pro ($6.500 ARS)", "https://mpago.la/2nDaBRx", use_container_width=True)
-        
-        if st.button("Cerrar Sesión"):
-            supabase.auth.sign_out()
-            st.session_state.del_tokens = True
-            st.session_state.user_data = None
-            st.rerun()
-            
-        st.write("")
-        mostrar_soporte()
-        st.stop()
+    if not es_pro and not esta_en_trial:
+        st.markdown(f"""
+            <div style="text-align: center; padding: 40px; border: 2px solid #ef4444; border-radius: 15px; background-color: rgba(239, 68, 68, 0.1);">
+                <h2 style="color: #ef4444;">Tu tiempo de acceso ha expirado</h2>
+                <p>Tu semana de prueba gratuita terminó. Activá el Plan Pro para seguir consultando jurisprudencia de Chubut.</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        st.link_button("🚀 Activar Plan Pro ($6.500 ARS)", "https://mpago.la/2nDaBRx", use_container_width=True)
+        
+        if st.button("Cerrar Sesión"):
+            supabase.auth.sign_out()
+            st.session_state.del_tokens = True
+            st.session_state.user_data = None
+            st.rerun()
+            
+        st.write("")
+        mostrar_soporte()
+        st.stop()
 
-    with st.sidebar:
-        if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
-        st.divider()
-        st.markdown(f"👤 **{datos['usuario']}**")
-        
-        if es_pro: 
-            st.warning(f"💎 Plan PRO hasta el {fecha_pro_formateada}")
-        else: 
-            st.info(f"🎁 Prueba Gratis hasta el {fecha_trial_formateada}")
-        
-        st.divider()
-        
-        if not es_pro:
-            st.markdown("""
-                <div style="border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 15px; background-color: rgba(255, 255, 255, 0.05); text-align: center; margin-bottom: 10px;">
-                    <h4 style="color: #60A5FA; margin-top: 0; margin-bottom: 5px;">🚀 Plan Mensual Pro</h4>
-                    <p style="font-size: 1.2rem; font-weight: bold; color: white; margin: 0;">$6.500 ARS <span style="font-size: 0.9rem; font-weight: normal; color: #9CA3AF;">/ mes</span></p>
-                    <p style="font-size: 0.85rem; color: #9CA3AF; margin-top: 5px; margin-bottom: 0;">Consultas ilimitadas de jurisprudencia.</p>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            st.link_button("💳 Pasarme a Pro", "https://mpago.la/2nDaBRx", type="primary", use_container_width=True)
-            st.divider()
+    with st.sidebar:
+        if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
+        st.divider()
+        st.markdown(f"👤 **{datos['usuario']}**")
+        
+        if es_pro: 
+            st.warning(f"💎 Plan PRO hasta el {fecha_pro_formateada}")
+        else: 
+            st.info(f"🎁 Prueba Gratis hasta el {fecha_trial_formateada}")
+        
+        st.divider()
+        
+        if not es_pro:
+            st.markdown("""
+                <div style="border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 15px; background-color: rgba(255, 255, 255, 0.05); text-align: center; margin-bottom: 10px;">
+                    <h4 style="color: #60A5FA; margin-top: 0; margin-bottom: 5px;">🚀 Plan Mensual Pro</h4>
+                    <p style="font-size: 1.2rem; font-weight: bold; color: white; margin: 0;">$6.500 ARS <span style="font-size: 0.9rem; font-weight: normal; color: #9CA3AF;">/ mes</span></p>
+                    <p style="font-size: 0.85rem; color: #9CA3AF; margin-top: 5px; margin-bottom: 0;">Consultas ilimitadas de jurisprudencia.</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            st.link_button("💳 Pasarme a Pro", "https://mpago.la/2nDaBRx", type="primary", use_container_width=True)
+            st.divider()
 
-        if st.button("➕ Nueva Consulta", type="primary", use_container_width=True):
-            nueva_id = f"Consulta {len(datos['historial']) + 1}"
-            datos['historial'][nueva_id] = []
-            st.session_state.sesion_actual = nueva_id
-            supabase.table("usuarios").update({"historial": datos['historial']}).eq("email", user.email).execute()
-            st.rerun()
-        
-        st.write("") 
-        historial = datos.get("historial") or {"Nueva Consulta": []}
-        if "sesion_actual" not in st.session_state: st.session_state.sesion_actual = list(historial.keys())[-1]
-        
-        for chat_id in reversed(list(historial.keys())):
-            col_btn, col_del = st.columns([0.8, 0.2])
-            with col_btn:
-                if st.button(f"{'🟢' if chat_id == st.session_state.sesion_actual else '📄'} {chat_id}", key=f"btn_{chat_id}", use_container_width=True):
-                    st.session_state.sesion_actual = chat_id
-                    st.rerun()
-            with col_del:
-                if st.button("❌", key=f"del_{chat_id}"):
-                    del historial[chat_id]
-                    st.session_state.sesion_actual = list(historial.keys())[-1] if historial else "Nueva Consulta"
-                    supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
-                    st.rerun()
-        st.divider()
-        
-        if st.button("Cerrar Sesión", use_container_width=True):
-            supabase.auth.sign_out()
-            st.session_state.del_tokens = True
-            st.session_state.user_data = None
-            st.rerun()
-            
-        mostrar_disclaimer()
-        mostrar_soporte()
+        if st.button("➕ Nueva Consulta", type="primary", use_container_width=True):
+            nueva_id = f"Consulta {len(datos['historial']) + 1}"
+            datos['historial'][nueva_id] = []
+            st.session_state.sesion_actual = nueva_id
+            supabase.table("usuarios").update({"historial": datos['historial']}).eq("email", user.email).execute()
+            st.rerun()
+        
+        st.write("") 
+        historial = datos.get("historial") or {"Nueva Consulta": []}
+        if "sesion_actual" not in st.session_state: st.session_state.sesion_actual = list(historial.keys())[-1]
+        
+        for chat_id in reversed(list(historial.keys())):
+            col_btn, col_del = st.columns([0.8, 0.2])
+            with col_btn:
+                if st.button(f"{'🟢' if chat_id == st.session_state.sesion_actual else '📄'} {chat_id}", key=f"btn_{chat_id}", use_container_width=True):
+                    st.session_state.sesion_actual = chat_id
+                    st.rerun()
+            with col_del:
+                if st.button("❌", key=f"del_{chat_id}"):
+                    del historial[chat_id]
+                    st.session_state.sesion_actual = list(historial.keys())[-1] if historial else "Nueva Consulta"
+                    supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
+                    st.rerun()
+        st.divider()
+        
+        if st.button("Cerrar Sesión", use_container_width=True):
+            supabase.auth.sign_out()
+            st.session_state.del_tokens = True
+            st.session_state.user_data = None
+            st.rerun()
+            
+        mostrar_disclaimer()
+        mostrar_soporte()
 
-    chat_actual = historial.get(st.session_state.sesion_actual, [])
-    
-    if not chat_actual:
-        st.markdown(f"""
-            <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 40vh; text-align: center;">
-                <h3 style="color: #9CA3AF; font-weight: 400; margin-bottom: 5px;">Hola, {datos['usuario']}</h3>
-                <h1 style="font-size: 3rem; font-weight: 600; margin-top: 0;">¿En qué puedo ayudarte hoy?</h1>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0.9rem; margin-top: 20px;'>💡 Pruebe con alguna de estas sugerencias:</p>", unsafe_allow_html=True)
-        st.markdown("<div class='botones-sugerencia'>", unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
-        if c1.button("⚖️ Fallos sobre cuota alimentaria", key="btn_sug1", use_container_width=True):
-            chat_actual.append({"role": "user", "content": "Mostrame fallos recientes sobre cuota alimentaria"})
-            historial[st.session_state.sesion_actual] = chat_actual
-            supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
-            st.rerun()
-        if c2.button("🚗 Jurisprudencia en accidentes de tránsito", key="btn_sug2", use_container_width=True):
-            chat_actual.append({"role": "user", "content": "Mostrame jurisprudencia sobre accidentes de tránsito"})
-            historial[st.session_state.sesion_actual] = chat_actual
-            supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
-            st.rerun()
-        c3, c4 = st.columns(2)
-        if c3.button("🏢 Fallos por despidos sin causa", key="btn_sug3", use_container_width=True):
-            chat_actual.append({"role": "user", "content": "Busca fallos sobre despidos sin causa justificada"})
-            historial[st.session_state.sesion_actual] = chat_actual
-            supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
-            st.rerun()
-        if c4.button("🏥 Mala praxis médica", key="btn_sug4", use_container_width=True):
-            chat_actual.append({"role": "user", "content": "Busca fallos relacionados con mala praxis médica"})
-            historial[st.session_state.sesion_actual] = chat_actual
-            supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-    else:
-        for m in chat_actual:
-            with st.chat_message(m["role"]): st.markdown(m["content"])
-            
-        st.markdown("---")
-        chat_str = f"--- CHUBUT.IA | REPORTE LEGAL ---\nConsulta: {st.session_state.sesion_actual}\nFecha: {datetime.now().strftime('%d/%m/%Y')}\n\n"
-        for msg in chat_actual:
-            rol = "👤 Usuario" if msg["role"] == "user" else "🤖 Chubut.IA"
-            chat_str += f"{rol}:\n{msg['content']}\n\n{'-'*40}\n\n"
-            
-        st.download_button(
-            label="📄 Exportar chat a texto (TXT)",
-            data=chat_str,
-            file_name=f"Reporte_{st.session_state.sesion_actual}.txt",
-            mime="text/plain",
-            use_container_width=True
-        )
+    chat_actual = historial.get(st.session_state.sesion_actual, [])
+    
+    if not chat_actual:
+        st.markdown(f"""
+            <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 40vh; text-align: center;">
+                <h3 style="color: #9CA3AF; font-weight: 400; margin-bottom: 5px;">Hola, {datos['usuario']}</h3>
+                <h1 style="font-size: 3rem; font-weight: 600; margin-top: 0;">¿En qué puedo ayudarte hoy?</h1>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0.9rem; margin-top: 20px;'>💡 Pruebe con alguna de estas sugerencias:</p>", unsafe_allow_html=True)
+        st.markdown("<div class='botones-sugerencia'>", unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        if c1.button("⚖️ Fallos sobre cuota alimentaria", key="btn_sug1", use_container_width=True):
+            chat_actual.append({"role": "user", "content": "Mostrame fallos recientes sobre cuota alimentaria"})
+            historial[st.session_state.sesion_actual] = chat_actual
+            supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
+            st.rerun()
+        if c2.button("🚗 Jurisprudencia en accidentes de tránsito", key="btn_sug2", use_container_width=True):
+            chat_actual.append({"role": "user", "content": "Mostrame jurisprudencia sobre accidentes de tránsito"})
+            historial[st.session_state.sesion_actual] = chat_actual
+            supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
+            st.rerun()
+        c3, c4 = st.columns(2)
+        if c3.button("🏢 Fallos por despidos sin causa", key="btn_sug3", use_container_width=True):
+            chat_actual.append({"role": "user", "content": "Busca fallos sobre despidos sin causa justificada"})
+            historial[st.session_state.sesion_actual] = chat_actual
+            supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
+            st.rerun()
+        if c4.button("🏥 Mala praxis médica", key="btn_sug4", use_container_width=True):
+            chat_actual.append({"role": "user", "content": "Busca fallos relacionados con mala praxis médica"})
+            historial[st.session_state.sesion_actual] = chat_actual
+            supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+    else:
+        for m in chat_actual:
+            with st.chat_message(m["role"]): st.markdown(m["content"])
+            
+        st.markdown("---")
+        chat_str = f"--- CHUBUT.IA | REPORTE LEGAL ---\nConsulta: {st.session_state.sesion_actual}\nFecha: {datetime.now().strftime('%d/%m/%Y')}\n\n"
+        for msg in chat_actual:
+            rol = "👤 Usuario" if msg["role"] == "user" else "🤖 Chubut.IA"
+            chat_str += f"{rol}:\n{msg['content']}\n\n{'-'*40}\n\n"
+            
+        st.download_button(
+            label="📄 Exportar chat a texto (TXT)",
+            data=chat_str,
+            file_name=f"Reporte_{st.session_state.sesion_actual}.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
 
-    if prompt := st.chat_input("¿En qué puedo ayudarte hoy?"):
-        chat_actual.append({"role": "user", "content": prompt})
-        historial[st.session_state.sesion_actual] = chat_actual
-        supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
-        st.rerun()
+    if prompt := st.chat_input("¿En qué puedo ayudarte hoy?"):
+        chat_actual.append({"role": "user", "content": prompt})
+        historial[st.session_state.sesion_actual] = chat_actual
+        supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
+        st.rerun()
 
-    if chat_actual and chat_actual[-1]["role"] == "user":
-        with st.chat_message("assistant"):
-            with st.spinner("Analizando jurisprudencia..."):
-                docs = vdb.similarity_search(chat_actual[-1]["content"], k=6)
-                contexto_final = "\n\n".join([f"📅 FECHA: {d.metadata.get('fecha_completa')}\n🔗 URL: {d.metadata.get('link_pdf')}\n📄 CONTENIDO:\n{d.page_content}" for d in docs])
-                
-                mensajes = [SystemMessage(content=generar_instruccion_ia(contexto_final))]
-                for m in chat_actual[:-1]:
-                    mensajes.append(HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"]))
-                mensajes.append(HumanMessage(content=chat_actual[-1]["content"]))
-                
-                respuesta = llm.invoke(mensajes)
-                st.markdown(respuesta.content)
-                chat_actual.append({"role": "assistant", "content": respuesta.content})
-                
-                if st.session_state.sesion_actual.startswith("Consulta ") and len(chat_actual) == 2:
-                    try:
-                        tit_p = f"Resume esta consulta en 3 o 4 palabras: '{chat_actual[0]['content']}'"
-                        nuevo_titulo = llm.invoke([HumanMessage(content=tit_p)]).content.replace('"', '').strip()
-                        if nuevo_titulo in historial: nuevo_titulo += " (1)" 
-                        historial[nuevo_titulo] = historial.pop(st.session_state.sesion_actual)
-                        st.session_state.sesion_actual = nuevo_titulo
-                    except: pass
+    if chat_actual and chat_actual[-1]["role"] == "user":
+        with st.chat_message("assistant"):
+            with st.spinner("Analizando jurisprudencia..."):
+                docs = vdb.similarity_search(chat_actual[-1]["content"], k=6)
+                contexto_final = "\n\n".join([f"📅 FECHA: {d.metadata.get('fecha_completa')}\n🔗 URL: {d.metadata.get('link_pdf')}\n📄 CONTENIDO:\n{d.page_content}" for d in docs])
+                
+                mensajes = [SystemMessage(content=generar_instruccion_ia(contexto_final))]
+                for m in chat_actual[:-1]:
+                    mensajes.append(HumanMessage(content=m["content"]) if m["role"]=="user" else AIMessage(content=m["content"]))
+                mensajes.append(HumanMessage(content=chat_actual[-1]["content"]))
+                
+                respuesta = llm.invoke(mensajes)
+                st.markdown(respuesta.content)
+                chat_actual.append({"role": "assistant", "content": respuesta.content})
+                
+                if st.session_state.sesion_actual.startswith("Consulta ") and len(chat_actual) == 2:
+                    try:
+                        tit_p = f"Resume esta consulta en 3 o 4 palabras: '{chat_actual[0]['content']}'"
+                        nuevo_titulo = llm.invoke([HumanMessage(content=tit_p)]).content.replace('"', '').strip()
+                        if nuevo_titulo in historial: nuevo_titulo += " (1)" 
+                        historial[nuevo_titulo] = historial.pop(st.session_state.sesion_actual)
+                        st.session_state.sesion_actual = nuevo_titulo
+                    except: pass
 
-                supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
-                st.rerun()
+                supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
+                st.rerun()
 
 # ==========================================
 # GESTOR CENTRAL DE PANTALLAS (RUTEADOR)
 # ==========================================
 if st.session_state.user_data is not None:
-    pantalla_chat()
+    pantalla_chat()
 elif st.session_state.show_login:
-    pantalla_acceso()
+    pantalla_acceso()
 else:
-    pantalla_invitado()
+    pantalla_invitado()
