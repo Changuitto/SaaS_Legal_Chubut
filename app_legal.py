@@ -501,7 +501,7 @@ def pantalla_chat():
             
         # CUADRO LEGAL PROFESIONAL
         st.divider()
-        with st.expander("⚖️ Legales y Privacidad"):
+        with st.expander("⚖️ Terminos y Condiciones"):
             st.markdown("""
                 <div style="font-size: 0.8rem; color: #9CA3AF;">
                 <b>Propiedad Intelectual:</b> El software, la base de datos y la marca Chubut.IA son propiedad exclusiva del desarrollador. Queda prohibida la reproducción o ingeniería inversa.<br><br>
