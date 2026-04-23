@@ -22,7 +22,23 @@ st.set_page_config(page_title="Chubut.IA - Jurisprudencia", page_icon="logo.png"
  
 st.markdown("""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@600;700&display=swap');
+ 
+        /* ── VARIABLES DORADAS ─────────────────────────────── */
+        :root {
+            --gold-light:   #E8C97A;
+            --gold-main:    #D4AF37;
+            --gold-deep:    #C5A028;
+            --gold-muted:   #A8882A;
+            --gold-dark:    #7A6118;
+            --gold-glow:    rgba(212, 175, 55, 0.18);
+            --gold-border:  rgba(212, 175, 55, 0.28);
+            --gold-border-strong: rgba(212, 175, 55, 0.55);
+            --navy-deep:    #070B17;
+            --navy-card:    #0C1120;
+            --navy-surface: #0F172A;
+            --navy-hover:   #111827;
+        }
  
         /* ── BASE ─────────────────────────────────────────── */
         html, body, [class*="css"] {
@@ -32,18 +48,30 @@ st.markdown("""
  
         /* ── FONDO GENERAL ────────────────────────────────── */
         .stApp {
-            background-color: #0A0F1E;
+            background-color: var(--navy-deep);
+            background-image:
+                radial-gradient(ellipse 80% 60% at 50% -10%, rgba(212,175,55,0.06) 0%, transparent 70%);
         }
  
         /* ── SIDEBAR ──────────────────────────────────────── */
         [data-testid="stSidebar"] {
-            background-color: #080C1A !important;
-            border-right: 1px solid rgba(148, 163, 184, 0.08) !important;
+            background-color: var(--navy-card) !important;
+            border-right: 1px solid var(--gold-border) !important;
+            box-shadow: 4px 0 24px rgba(0,0,0,0.5) !important;
         }
         [data-testid="stSidebar"] .stMarkdown p,
         [data-testid="stSidebar"] .stMarkdown span {
             color: #94A3B8;
             font-size: 0.82rem;
+        }
+ 
+        /* ── DIVISOR DORADO SIDEBAR ───────────────────────── */
+        [data-testid="stSidebar"] hr {
+            border: none !important;
+            border-top: 1px solid var(--gold-border) !important;
+            margin: 1rem 0 !important;
+            background: linear-gradient(90deg, transparent, var(--gold-main), transparent) !important;
+            height: 1px !important;
         }
  
         /* ── BOTONES SIDEBAR ──────────────────────────────── */
@@ -58,58 +86,62 @@ st.markdown("""
             color: #94A3B8 !important;
             background-color: transparent !important;
             border: 1px solid rgba(148, 163, 184, 0.12) !important;
-            transition: all 0.18s ease;
+            transition: all 0.22s ease;
         }
         [data-testid="stSidebar"] .stButton > button:hover {
-            color: #E2E8F0 !important;
-            background-color: rgba(148, 163, 184, 0.06) !important;
-            border-color: rgba(148, 163, 184, 0.28) !important;
+            color: var(--gold-light) !important;
+            background-color: var(--gold-glow) !important;
+            border-color: var(--gold-border) !important;
+            box-shadow: 0 0 10px rgba(212,175,55,0.08) !important;
         }
  
-        /* ── BOTÓN PRIMARIO (Nueva Consulta / Pro) ────────── */
+        /* ── BOTÓN PRIMARIO ───────────────────────────────── */
         [data-testid="stSidebar"] .stButton > button[kind="primary"],
         .stButton > button[kind="primary"] {
-            background: linear-gradient(135deg, #1E3A8A 0%, #1D4ED8 100%) !important;
-            border: 1px solid #2563EB !important;
-            color: #EFF6FF !important;
+            background: linear-gradient(135deg, #1A2F6A 0%, #1D4ED8 50%, #1A2F6A 100%) !important;
+            border: 1px solid var(--gold-border-strong) !important;
+            color: var(--gold-light) !important;
             font-weight: 500 !important;
-            letter-spacing: 0.03em !important;
+            letter-spacing: 0.04em !important;
             border-radius: 6px !important;
-            transition: all 0.2s ease !important;
-            box-shadow: 0 1px 6px rgba(37, 99, 235, 0.25) !important;
+            transition: all 0.22s ease !important;
+            box-shadow: 0 1px 8px rgba(212,175,55,0.15), inset 0 1px 0 rgba(212,175,55,0.12) !important;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.4) !important;
         }
         [data-testid="stSidebar"] .stButton > button[kind="primary"]:hover,
         .stButton > button[kind="primary"]:hover {
-            background: linear-gradient(135deg, #1E40AF 0%, #2563EB 100%) !important;
-            box-shadow: 0 2px 10px rgba(37, 99, 235, 0.40) !important;
+            background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 50%, #1E3A8A 100%) !important;
+            box-shadow: 0 2px 16px rgba(212,175,55,0.28), inset 0 1px 0 rgba(212,175,55,0.18) !important;
+            border-color: var(--gold-main) !important;
         }
  
-        /* ── BURBUJAS DE CHAT ─────────────────────────────── */
-        /* Asistente */
+        /* ── BURBUJAS DE CHAT — ASISTENTE ─────────────────── */
         div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-assistant"]) {
-            background-color: #0F172A;
-            border: 1px solid rgba(148, 163, 184, 0.10);
+            background-color: var(--navy-card);
+            border: 1px solid rgba(212,175,55,0.14);
+            border-left: 3px solid var(--gold-border-strong);
             border-radius: 2px 16px 16px 16px;
             padding: 1.4rem 1.6rem;
             margin-bottom: 1.2rem;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.35), 0 0 0 1px rgba(212,175,55,0.04);
         }
         div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-assistant"]) p {
             color: #CBD5E1;
             font-size: 0.925rem;
-            line-height: 1.75;
+            line-height: 1.78;
         }
  
-        /* Usuario */
+        /* ── BURBUJAS DE CHAT — USUARIO ───────────────────── */
         div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-user"]) {
-            background: linear-gradient(135deg, #1E3A8A 0%, #1E40AF 100%) !important;
-            border: 1px solid rgba(59, 130, 246, 0.25) !important;
+            background: linear-gradient(135deg, #172554 0%, #1E3A8A 100%) !important;
+            border: 1px solid var(--gold-border) !important;
+            border-right: 3px solid var(--gold-border-strong) !important;
             border-radius: 16px 2px 16px 16px !important;
             padding: 1.2rem 1.6rem !important;
             margin-bottom: 1.2rem !important;
             margin-left: auto !important;
             max-width: 85% !important;
-            box-shadow: 0 2px 12px rgba(30, 58, 138, 0.35) !important;
+            box-shadow: 0 4px 20px rgba(30,58,138,0.4), 0 0 0 1px rgba(212,175,55,0.06) !important;
         }
         div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-user"]) * {
             color: #DBEAFE !important;
@@ -118,51 +150,55 @@ st.markdown("""
  
         /* ── CHAT INPUT ───────────────────────────────────── */
         [data-testid="stChatInput"] textarea {
-            background-color: #0F172A !important;
-            border: 1px solid rgba(148, 163, 184, 0.18) !important;
+            background-color: var(--navy-card) !important;
+            border: 1px solid var(--gold-border) !important;
             border-radius: 10px !important;
             color: #E2E8F0 !important;
             font-size: 0.9rem !important;
-            caret-color: #3B82F6;
-            transition: border-color 0.2s;
+            caret-color: var(--gold-main);
+            transition: border-color 0.22s, box-shadow 0.22s;
         }
         [data-testid="stChatInput"] textarea:focus {
-            border-color: rgba(59, 130, 246, 0.50) !important;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08) !important;
+            border-color: var(--gold-main) !important;
+            box-shadow: 0 0 0 3px rgba(212,175,55,0.10), 0 0 20px rgba(212,175,55,0.06) !important;
         }
         [data-testid="stChatInput"] textarea::placeholder {
             color: #475569 !important;
         }
  
-        /* ── BOTONES DE SUGERENCIA ────────────────────────── */
-        .botones-sugerencia button {
-            border: 1px solid rgba(148, 163, 184, 0.16) !important;
-            border-radius: 8px !important;
-            padding: 14px 16px !important;
-            text-align: left !important;
-            background-color: #0F172A !important;
-            color: #64748B !important;
-            font-size: 0.82rem !important;
-            font-weight: 400 !important;
-            line-height: 1.5 !important;
-            transition: all 0.2s ease !important;
-        }
-        .botones-sugerencia button:hover {
-            border-color: rgba(59, 130, 246, 0.40) !important;
-            background-color: rgba(30, 58, 138, 0.15) !important;
-            color: #CBD5E1 !important;
-        }
- 
-        /* ── DIVISORES ────────────────────────────────────── */
+        /* ── DIVISORES GLOBALES ───────────────────────────── */
         hr {
-            border-color: rgba(148, 163, 184, 0.08) !important;
+            border: none !important;
+            height: 1px !important;
+            background: linear-gradient(90deg, transparent, var(--gold-border), transparent) !important;
             margin: 1rem 0 !important;
         }
  
-        /* ── TABS (Login / Registro) ──────────────────────── */
+        /* ── BOTONES DE SUGERENCIA ────────────────────────── */
+        .botones-sugerencia button {
+            border: 1px solid var(--gold-border) !important;
+            border-radius: 8px !important;
+            padding: 14px 16px !important;
+            text-align: left !important;
+            background-color: var(--navy-card) !important;
+            color: #94A3B8 !important;
+            font-size: 0.82rem !important;
+            font-weight: 400 !important;
+            line-height: 1.5 !important;
+            transition: all 0.22s ease !important;
+            box-shadow: inset 0 1px 0 rgba(212,175,55,0.05) !important;
+        }
+        .botones-sugerencia button:hover {
+            border-color: var(--gold-main) !important;
+            background-color: var(--gold-glow) !important;
+            color: var(--gold-light) !important;
+            box-shadow: 0 4px 16px rgba(212,175,55,0.12), inset 0 1px 0 rgba(212,175,55,0.12) !important;
+        }
+ 
+        /* ── TABS ─────────────────────────────────────────── */
         .stTabs [data-baseweb="tab-list"] {
             background-color: transparent;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+            border-bottom: 1px solid var(--gold-border);
             gap: 0;
         }
         .stTabs [data-baseweb="tab"] {
@@ -174,33 +210,36 @@ st.markdown("""
             transition: all 0.18s;
         }
         .stTabs [aria-selected="true"] {
-            color: #93C5FD !important;
-            border-bottom: 2px solid #3B82F6 !important;
+            color: var(--gold-light) !important;
+            border-bottom: 2px solid var(--gold-main) !important;
             background-color: transparent !important;
+        }
+        .stTabs [data-baseweb="tab"]:hover {
+            color: var(--gold-light) !important;
         }
  
         /* ── INPUTS DE FORMULARIO ─────────────────────────── */
         .stTextInput input, .stTextArea textarea {
-            background-color: #0F172A !important;
-            border: 1px solid rgba(148, 163, 184, 0.16) !important;
+            background-color: var(--navy-card) !important;
+            border: 1px solid var(--gold-border) !important;
             border-radius: 6px !important;
             color: #E2E8F0 !important;
             font-size: 0.875rem !important;
-            transition: border-color 0.2s;
+            transition: border-color 0.22s, box-shadow 0.22s;
         }
         .stTextInput input:focus, .stTextArea textarea:focus {
-            border-color: rgba(59, 130, 246, 0.45) !important;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08) !important;
+            border-color: var(--gold-main) !important;
+            box-shadow: 0 0 0 3px rgba(212,175,55,0.10) !important;
         }
         .stTextInput label, .stTextArea label {
-            color: #64748B !important;
+            color: var(--gold-muted) !important;
             font-size: 0.78rem !important;
             font-weight: 500 !important;
-            letter-spacing: 0.06em !important;
+            letter-spacing: 0.08em !important;
             text-transform: uppercase !important;
         }
  
-        /* ── ALERTS / INFO / WARNING ──────────────────────── */
+        /* ── ALERTS ───────────────────────────────────────── */
         .stAlert {
             border-radius: 8px !important;
             font-size: 0.83rem !important;
@@ -209,34 +248,54 @@ st.markdown("""
         /* ── DOWNLOAD BUTTON ──────────────────────────────── */
         .stDownloadButton > button {
             background-color: transparent !important;
-            border: 1px solid rgba(148, 163, 184, 0.20) !important;
+            border: 1px solid var(--gold-border) !important;
             border-radius: 6px !important;
-            color: #64748B !important;
+            color: var(--gold-muted) !important;
             font-size: 0.8rem !important;
             font-weight: 400 !important;
-            transition: all 0.2s !important;
+            transition: all 0.22s !important;
+            letter-spacing: 0.02em !important;
         }
         .stDownloadButton > button:hover {
-            border-color: rgba(148, 163, 184, 0.40) !important;
-            color: #CBD5E1 !important;
-            background-color: rgba(148, 163, 184, 0.05) !important;
+            border-color: var(--gold-main) !important;
+            color: var(--gold-light) !important;
+            background-color: var(--gold-glow) !important;
+            box-shadow: 0 2px 12px rgba(212,175,55,0.12) !important;
         }
  
         /* ── EXPANDER ─────────────────────────────────────── */
         .streamlit-expanderHeader {
             font-size: 0.82rem !important;
-            color: #475569 !important;
+            color: var(--gold-dark) !important;
             font-weight: 400 !important;
         }
         .streamlit-expanderContent {
             background-color: transparent !important;
         }
+        [data-testid="stExpander"] {
+            border: 1px solid var(--gold-border) !important;
+            border-radius: 6px !important;
+        }
+ 
+        /* ── LINK BUTTON ──────────────────────────────────── */
+        .stLinkButton > a {
+            border: 1px solid var(--gold-border-strong) !important;
+            background: linear-gradient(135deg, rgba(212,175,55,0.10), rgba(212,175,55,0.04)) !important;
+            color: var(--gold-light) !important;
+            border-radius: 6px !important;
+            font-weight: 500 !important;
+            transition: all 0.22s !important;
+        }
+        .stLinkButton > a:hover {
+            background: linear-gradient(135deg, rgba(212,175,55,0.20), rgba(212,175,55,0.10)) !important;
+            box-shadow: 0 2px 16px rgba(212,175,55,0.22) !important;
+        }
  
         /* ── SCROLLBAR ────────────────────────────────────── */
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.15); border-radius: 2px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.3); }
+        ::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.20); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(212,175,55,0.40); }
     </style>
 """, unsafe_allow_html=True)
  
@@ -358,11 +417,11 @@ def mostrar_disclaimer():
     st.markdown("""
         <div style="
             font-size: 0.72rem;
-            color: #334155;
+            color: #2E3A4E;
             text-align: center;
             margin-top: 28px;
             padding: 12px 10px;
-            border-top: 1px solid rgba(148, 163, 184, 0.08);
+            border-top: 1px solid rgba(212,175,55,0.18);
             line-height: 1.6;
             font-style: italic;
         ">
@@ -377,7 +436,7 @@ def mostrar_soporte():
         <div style="text-align: center; font-size: 0.77rem; color: #334155; margin-top: 8px; padding-bottom: 18px;">
             ¿Necesitás ayuda?<br>
             <a href="mailto:chubutiaoficial@gmail.com"
-               style="color: #60A5FA; text-decoration: none; font-weight: 500; letter-spacing: 0.01em;">
+               style="color: #D4AF37; text-decoration: none; font-weight: 500; letter-spacing: 0.01em;">
                 chubutiaoficial@gmail.com
             </a>
         </div>
@@ -409,12 +468,19 @@ def pantalla_acceso():
             <h3 style='
                 text-align: center;
                 font-family: "Playfair Display", serif;
-                font-weight: 600;
+                font-weight: 700;
                 color: #E2E8F0;
                 font-size: 1.6rem;
                 letter-spacing: 0.01em;
-                margin-bottom: 1.5rem;
+                margin-bottom: 0.5rem;
             '>Acceso al Sistema</h3>
+            <div style="
+                width: 60px;
+                height: 2px;
+                background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+                margin: 0 auto 1.5rem auto;
+                border-radius: 1px;
+            "></div>
         """, unsafe_allow_html=True)
  
         tab_in, tab_reg = st.tabs(["  Entrar  ", "  Registrarse  "])
@@ -514,20 +580,32 @@ def pantalla_invitado():
  
     with st.sidebar:
         if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
-        st.divider()
+ 
+        # Línea dorada decorativa bajo el logo
+        st.markdown("""
+            <div style="
+                height: 1px;
+                background: linear-gradient(90deg, transparent, rgba(212,175,55,0.55), transparent);
+                margin: 4px 0 16px 0;
+            "></div>
+        """, unsafe_allow_html=True)
  
         st.markdown(f"""
             <div style="
-                background: rgba(15, 23, 42, 0.8);
-                border: 1px solid rgba(148, 163, 184, 0.10);
+                background: linear-gradient(135deg, rgba(12,17,32,0.9) 0%, rgba(15,23,42,0.7) 100%);
+                border: 1px solid rgba(212,175,55,0.22);
+                border-top: 2px solid rgba(212,175,55,0.50);
                 border-radius: 8px;
                 padding: 14px 16px;
                 margin-bottom: 12px;
+                box-shadow: 0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(212,175,55,0.08);
             ">
-                <p style="color: #475569; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 6px 0; font-weight: 500;">Modo</p>
-                <p style="color: #CBD5E1; font-size: 0.88rem; font-weight: 500; margin: 0;">Acceso Invitado</p>
-                <p style="color: #475569; font-size: 0.78rem; margin: 6px 0 0 0;">
-                    Consultas restantes: <span style="color: #93C5FD; font-weight: 600;">{max(0, consultas_restantes)}</span> / 5
+                <p style="color: #6B7280; font-size: 0.70rem; text-transform: uppercase; letter-spacing: 0.10em; margin: 0 0 5px 0; font-weight: 500;">Modo de acceso</p>
+                <p style="color: #CBD5E1; font-size: 0.88rem; font-weight: 500; margin: 0 0 8px 0;">Acceso Invitado</p>
+                <p style="color: #475569; font-size: 0.78rem; margin: 0; line-height: 1.5;">
+                    Consultas restantes:
+                    <span style="color: #D4AF37; font-weight: 600; font-size: 0.88rem;">&nbsp;{max(0, consultas_restantes)}</span>
+                    <span style="color: #334155;"> / 5</span>
                 </p>
             </div>
         """, unsafe_allow_html=True)
@@ -535,14 +613,21 @@ def pantalla_invitado():
         if st.button("Iniciar Sesión / Registrarse", type="primary", use_container_width=True):
             st.session_state.show_login = True
             st.rerun()
+ 
+        st.markdown("""
+            <div style="
+                height: 1px;
+                background: linear-gradient(90deg, transparent, rgba(212,175,55,0.28), transparent);
+                margin: 16px 0;
+            "></div>
+        """, unsafe_allow_html=True)
         
-        st.divider()
         with st.expander("Términos y Privacidad"):
             st.markdown("""
                 <div style="font-size: 0.78rem; color: #475569; line-height: 1.7;">
-                    <b style="color: #64748B;">Propiedad Intelectual:</b> El software y la marca Chubut.IA son propiedad exclusiva del desarrollador. Queda prohibida la reproducción total o parcial.<br><br>
-                    <b style="color: #64748B;">Responsabilidad:</b> Herramienta de asistencia basada en IA. La verificación en fuentes oficiales es responsabilidad del profesional.<br><br>
-                    <b style="color: #64748B;">Privacidad:</b> Cumplimos con la Ley 25.326. Sus consultas son confidenciales.
+                    <b style="color: #A8882A;">Propiedad Intelectual:</b> El software y la marca Chubut.IA son propiedad exclusiva del desarrollador. Queda prohibida la reproducción total o parcial.<br><br>
+                    <b style="color: #A8882A;">Responsabilidad:</b> Herramienta de asistencia basada en IA. La verificación en fuentes oficiales es responsabilidad del profesional.<br><br>
+                    <b style="color: #A8882A;">Privacidad:</b> Cumplimos con la Ley 25.326. Sus consultas son confidenciales.
                 </div>
             """, unsafe_allow_html=True)
             
@@ -560,21 +645,29 @@ def pantalla_invitado():
                 text-align: center;
             ">
                 <p style="
-                    font-size: 0.8rem;
+                    font-size: 0.75rem;
                     text-transform: uppercase;
-                    letter-spacing: 0.18em;
-                    color: #3B82F6;
+                    letter-spacing: 0.22em;
+                    color: #D4AF37;
                     font-weight: 500;
-                    margin-bottom: 14px;
+                    margin-bottom: 16px;
                 ">Jurisprudencia · Provincia de Chubut</p>
                 <h1 style="
                     font-family: 'Playfair Display', serif;
                     font-size: 2.6rem;
-                    font-weight: 600;
+                    font-weight: 700;
                     color: #E2E8F0;
-                    margin: 0 0 12px 0;
-                    line-height: 1.2;
+                    margin: 0 0 10px 0;
+                    line-height: 1.22;
+                    letter-spacing: -0.01em;
                 ">Consultá la jurisprudencia<br>sin registrarte.</h1>
+                <div style="
+                    width: 80px;
+                    height: 2px;
+                    background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+                    margin: 10px auto 14px auto;
+                    border-radius: 1px;
+                "></div>
                 <p style="
                     font-size: 1rem;
                     color: #475569;
@@ -587,10 +680,10 @@ def pantalla_invitado():
         st.markdown("""
             <p style='
                 text-align: center;
-                color: #334155;
-                font-size: 0.78rem;
+                color: #A8882A;
+                font-size: 0.75rem;
                 text-transform: uppercase;
-                letter-spacing: 0.1em;
+                letter-spacing: 0.14em;
                 font-weight: 500;
                 margin: 28px 0 14px 0;
             '>Consultas frecuentes</p>
@@ -617,7 +710,7 @@ def pantalla_invitado():
         for m in st.session_state.guest_history:
             with st.chat_message(m["role"]): st.markdown(m["content"])
             
-        st.markdown("<div style='height:1px; background: rgba(148,163,184,0.08); margin: 1.5rem 0;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:1px; background: linear-gradient(90deg, transparent, rgba(212,175,55,0.28), transparent); margin: 1.5rem 0;'></div>", unsafe_allow_html=True)
         
         pdf_bytes = generar_pdf(st.session_state.guest_history, "Chat de Prueba Invitado")
         st.download_button(
@@ -633,15 +726,17 @@ def pantalla_invitado():
             <div style="
                 text-align: center;
                 padding: 22px 24px;
-                border: 1px solid rgba(59, 130, 246, 0.20);
+                border: 1px solid rgba(212,175,55,0.25);
+                border-top: 2px solid rgba(212,175,55,0.55);
                 border-radius: 10px;
-                background: rgba(30, 58, 138, 0.08);
+                background: linear-gradient(135deg, rgba(20,16,4,0.6) 0%, rgba(12,17,32,0.7) 100%);
                 margin-top: 20px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
             ">
-                <p style="color: #64748B; font-size: 0.85rem; margin: 0 0 14px 0;">
+                <p style="color: #7A6118; font-size: 0.85rem; margin: 0 0 10px 0;">
                     Alcanzaste el límite de 5 consultas gratuitas.
                 </p>
-                <p style="color: #93C5FD; font-size: 0.9rem; font-weight: 500; margin: 0;">
+                <p style="color: #D4AF37; font-size: 0.9rem; font-weight: 500; margin: 0;">
                     Creá una cuenta gratuita para continuar con 7 días de prueba completa.
                 </p>
             </div>
@@ -705,58 +800,70 @@ def pantalla_chat():
  
     with st.sidebar:
         if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
-        st.divider()
+ 
+        # Línea dorada decorativa
+        st.markdown("""
+            <div style="
+                height: 1px;
+                background: linear-gradient(90deg, transparent, rgba(212,175,55,0.55), transparent);
+                margin: 4px 0 16px 0;
+            "></div>
+        """, unsafe_allow_html=True)
  
         if es_pro:
             st.markdown(f"""
                 <div style="
-                    background: rgba(30, 58, 138, 0.12);
-                    border: 1px solid rgba(59, 130, 246, 0.20);
+                    background: linear-gradient(135deg, rgba(20,16,4,0.85) 0%, rgba(12,17,32,0.9) 100%);
+                    border: 1px solid rgba(212,175,55,0.40);
+                    border-top: 2px solid rgba(212,175,55,0.70);
                     border-radius: 8px;
-                    padding: 12px 14px;
+                    padding: 14px 16px;
                     margin-bottom: 10px;
+                    box-shadow: 0 2px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(212,175,55,0.12);
                 ">
-                    <p style="color: #475569; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 500; margin: 0 0 4px 0;">Cuenta</p>
-                    <p style="color: #E2E8F0; font-size: 0.88rem; font-weight: 500; margin: 0 0 6px 0;">{datos['usuario']}</p>
+                    <p style="color: #7A6118; font-size: 0.70rem; text-transform: uppercase; letter-spacing: 0.10em; font-weight: 500; margin: 0 0 4px 0;">Cuenta verificada</p>
+                    <p style="color: #E2E8F0; font-size: 0.90rem; font-weight: 500; margin: 0 0 8px 0;">{datos['usuario']}</p>
                     <span style="
                         display: inline-block;
-                        background: rgba(37, 99, 235, 0.18);
-                        border: 1px solid rgba(59, 130, 246, 0.30);
-                        color: #93C5FD;
-                        font-size: 0.7rem;
-                        font-weight: 500;
+                        background: linear-gradient(135deg, rgba(212,175,55,0.18) 0%, rgba(212,175,55,0.08) 100%);
+                        border: 1px solid rgba(212,175,55,0.45);
+                        color: #D4AF37;
+                        font-size: 0.68rem;
+                        font-weight: 600;
                         padding: 3px 10px;
                         border-radius: 4px;
-                        letter-spacing: 0.06em;
+                        letter-spacing: 0.10em;
                         text-transform: uppercase;
-                    ">Plan Pro</span>
-                    <p style="color: #334155; font-size: 0.75rem; margin: 8px 0 0 0;">Vigente hasta el {fecha_pro_formateada}</p>
+                    ">✦ Plan Pro</span>
+                    <p style="color: #4A3A10; font-size: 0.73rem; margin: 8px 0 0 0;">Vigente hasta el {fecha_pro_formateada}</p>
                 </div>
             """, unsafe_allow_html=True)
         elif esta_en_trial:
             st.markdown(f"""
                 <div style="
-                    background: rgba(15, 23, 42, 0.6);
-                    border: 1px solid rgba(148, 163, 184, 0.10);
+                    background: linear-gradient(135deg, rgba(12,17,32,0.9) 0%, rgba(15,23,42,0.7) 100%);
+                    border: 1px solid rgba(212,175,55,0.18);
+                    border-top: 2px solid rgba(212,175,55,0.35);
                     border-radius: 8px;
-                    padding: 12px 14px;
+                    padding: 14px 16px;
                     margin-bottom: 10px;
+                    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
                 ">
-                    <p style="color: #475569; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 500; margin: 0 0 4px 0;">Cuenta</p>
-                    <p style="color: #E2E8F0; font-size: 0.88rem; font-weight: 500; margin: 0 0 6px 0;">{datos['usuario']}</p>
+                    <p style="color: #6B7280; font-size: 0.70rem; text-transform: uppercase; letter-spacing: 0.10em; font-weight: 500; margin: 0 0 4px 0;">Cuenta</p>
+                    <p style="color: #E2E8F0; font-size: 0.90rem; font-weight: 500; margin: 0 0 8px 0;">{datos['usuario']}</p>
                     <span style="
                         display: inline-block;
-                        background: rgba(148, 163, 184, 0.08);
-                        border: 1px solid rgba(148, 163, 184, 0.18);
-                        color: #64748B;
-                        font-size: 0.7rem;
+                        background: rgba(148, 163, 184, 0.07);
+                        border: 1px solid rgba(212,175,55,0.20);
+                        color: #A8882A;
+                        font-size: 0.68rem;
                         font-weight: 500;
                         padding: 3px 10px;
                         border-radius: 4px;
-                        letter-spacing: 0.06em;
+                        letter-spacing: 0.08em;
                         text-transform: uppercase;
                     ">Prueba Gratuita</span>
-                    <p style="color: #334155; font-size: 0.75rem; margin: 8px 0 0 0;">Vence el {fecha_trial_formateada}</p>
+                    <p style="color: #4A3A10; font-size: 0.73rem; margin: 8px 0 0 0;">Vence el {fecha_trial_formateada}</p>
                 </div>
             """, unsafe_allow_html=True)
         else:
@@ -768,14 +875,14 @@ def pantalla_chat():
                     padding: 12px 14px;
                     margin-bottom: 10px;
                 ">
-                    <p style="color: #475569; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 500; margin: 0 0 4px 0;">Cuenta</p>
+                    <p style="color: #475569; font-size: 0.70rem; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 500; margin: 0 0 4px 0;">Cuenta</p>
                     <p style="color: #E2E8F0; font-size: 0.88rem; font-weight: 500; margin: 0 0 6px 0;">{datos['usuario']}</p>
                     <span style="
                         display: inline-block;
                         background: rgba(239, 68, 68, 0.10);
                         border: 1px solid rgba(239, 68, 68, 0.25);
                         color: #F87171;
-                        font-size: 0.7rem;
+                        font-size: 0.68rem;
                         font-weight: 500;
                         padding: 3px 10px;
                         border-radius: 4px;
@@ -784,29 +891,44 @@ def pantalla_chat():
                     ">Acceso Expirado</span>
                 </div>
             """, unsafe_allow_html=True)
-        
-        st.divider()
+ 
+        st.markdown("""
+            <div style="
+                height: 1px;
+                background: linear-gradient(90deg, transparent, rgba(212,175,55,0.28), transparent);
+                margin: 12px 0;
+            "></div>
+        """, unsafe_allow_html=True)
         
         if not es_pro:
             st.markdown("""
                 <div style="
-                    border: 1px solid rgba(59, 130, 246, 0.18);
+                    border: 1px solid rgba(212,175,55,0.30);
+                    border-top: 2px solid rgba(212,175,55,0.60);
                     border-radius: 8px;
                     padding: 16px;
-                    background: rgba(30, 58, 138, 0.06);
+                    background: linear-gradient(135deg, rgba(20,16,4,0.7) 0%, rgba(12,17,32,0.8) 100%);
                     text-align: center;
                     margin-bottom: 12px;
+                    box-shadow: 0 2px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(212,175,55,0.10);
                 ">
-                    <p style="color: #60A5FA; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 500; margin: 0 0 6px 0;">Plan Mensual Pro</p>
-                    <p style="font-size: 1.3rem; font-weight: 600; color: #E2E8F0; margin: 0;">
+                    <p style="color: #A8882A; font-size: 0.70rem; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 500; margin: 0 0 6px 0;">Plan Mensual Pro</p>
+                    <p style="font-size: 1.35rem; font-weight: 700; color: #D4AF37; margin: 0; font-family: 'Playfair Display', serif; letter-spacing: 0.01em;">
                         $6.500
-                        <span style="font-size: 0.8rem; font-weight: 300; color: #475569;"> ARS / mes</span>
+                        <span style="font-size: 0.78rem; font-weight: 300; color: #7A6118; font-family: Inter, sans-serif;"> ARS / mes</span>
                     </p>
-                    <p style="font-size: 0.77rem; color: #334155; margin: 6px 0 0 0;">Consultas ilimitadas de jurisprudencia.</p>
+                    <p style="font-size: 0.75rem; color: #4A3A10; margin: 6px 0 0 0;">Consultas ilimitadas de jurisprudencia.</p>
                 </div>
             """, unsafe_allow_html=True)
-            st.link_button("Activar Plan Pro", "https://mpago.la/2nDaBRx", type="primary", use_container_width=True)
-            st.divider()
+            st.link_button("✦ Activar Plan Pro", "https://mpago.la/2nDaBRx", type="primary", use_container_width=True)
+ 
+            st.markdown("""
+                <div style="
+                    height: 1px;
+                    background: linear-gradient(90deg, transparent, rgba(212,175,55,0.28), transparent);
+                    margin: 12px 0;
+                "></div>
+            """, unsafe_allow_html=True)
  
         if st.button("+ Nueva Consulta", type="primary", use_container_width=True):
             nueva_id = f"Consulta {len(datos['historial']) + 1}"
@@ -831,22 +953,36 @@ def pantalla_chat():
                     st.session_state.sesion_actual = list(historial.keys())[-1] if historial else "Nueva Consulta"
                     supabase.table("usuarios").update({"historial": historial}).eq("email", user.email).execute()
                     st.rerun()
-        st.divider()
+ 
+        st.markdown("""
+            <div style="
+                height: 1px;
+                background: linear-gradient(90deg, transparent, rgba(212,175,55,0.28), transparent);
+                margin: 12px 0;
+            "></div>
+        """, unsafe_allow_html=True)
         
         if st.button("Cerrar Sesión", use_container_width=True):
             supabase.auth.sign_out()
             st.session_state.del_tokens = True
             st.session_state.user_data = None
             st.rerun()
+ 
+        st.markdown("""
+            <div style="
+                height: 1px;
+                background: linear-gradient(90deg, transparent, rgba(212,175,55,0.28), transparent);
+                margin: 12px 0;
+            "></div>
+        """, unsafe_allow_html=True)
             
-        st.divider()
         with st.expander("Términos y Condiciones"):
             st.markdown("""
                 <div style="font-size: 0.78rem; color: #475569; line-height: 1.7;">
-                    <b style="color: #64748B;">Propiedad Intelectual:</b> El software, la base de datos y la marca Chubut.IA son propiedad exclusiva del desarrollador. Queda prohibida la reproducción o ingeniería inversa.<br><br>
-                    <b style="color: #64748B;">Responsabilidad:</b> Chubut.IA es una herramienta de asistencia. Los resultados son informativos. La verificación en fuentes oficiales es responsabilidad del profesional.<br><br>
-                    <b style="color: #64748B;">Datos Personales:</b> Cumplimos con la Ley 25.326. Sus consultas son confidenciales y cifradas.<br><br>
-                    <b style="color: #64748B;">Uso Pro:</b> El acceso es personal e intransferible.
+                    <b style="color: #A8882A;">Propiedad Intelectual:</b> El software, la base de datos y la marca Chubut.IA son propiedad exclusiva del desarrollador. Queda prohibida la reproducción o ingeniería inversa.<br><br>
+                    <b style="color: #A8882A;">Responsabilidad:</b> Chubut.IA es una herramienta de asistencia. Los resultados son informativos. La verificación en fuentes oficiales es responsabilidad del profesional.<br><br>
+                    <b style="color: #A8882A;">Datos Personales:</b> Cumplimos con la Ley 25.326. Sus consultas son confidenciales y cifradas.<br><br>
+                    <b style="color: #A8882A;">Uso Pro:</b> El acceso es personal e intransferible.
                 </div>
             """, unsafe_allow_html=True)
  
@@ -866,21 +1002,29 @@ def pantalla_chat():
                 text-align: center;
             ">
                 <p style="
-                    font-size: 0.8rem;
+                    font-size: 0.75rem;
                     text-transform: uppercase;
-                    letter-spacing: 0.18em;
-                    color: #3B82F6;
+                    letter-spacing: 0.22em;
+                    color: #D4AF37;
                     font-weight: 500;
                     margin-bottom: 14px;
                 ">Bienvenido, {datos['usuario']}</p>
                 <h1 style="
                     font-family: 'Playfair Display', serif;
                     font-size: 2.5rem;
-                    font-weight: 600;
+                    font-weight: 700;
                     color: #E2E8F0;
-                    margin: 0 0 12px 0;
+                    margin: 0 0 10px 0;
                     line-height: 1.25;
+                    letter-spacing: -0.01em;
                 ">¿En qué puedo asistirte hoy?</h1>
+                <div style="
+                    width: 80px;
+                    height: 2px;
+                    background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+                    margin: 10px auto 14px auto;
+                    border-radius: 1px;
+                "></div>
                 <p style="
                     font-size: 0.95rem;
                     color: #475569;
@@ -893,10 +1037,10 @@ def pantalla_chat():
         st.markdown("""
             <p style='
                 text-align: center;
-                color: #334155;
-                font-size: 0.78rem;
+                color: #A8882A;
+                font-size: 0.75rem;
                 text-transform: uppercase;
-                letter-spacing: 0.1em;
+                letter-spacing: 0.14em;
                 font-weight: 500;
                 margin: 28px 0 14px 0;
             '>Consultas frecuentes</p>
@@ -931,7 +1075,7 @@ def pantalla_chat():
         for m in chat_actual:
             with st.chat_message(m["role"]): st.markdown(m["content"])
             
-        st.markdown("<div style='height:1px; background: rgba(148,163,184,0.08); margin: 1.5rem 0;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:1px; background: linear-gradient(90deg, transparent, rgba(212,175,55,0.28), transparent); margin: 1.5rem 0;'></div>", unsafe_allow_html=True)
         
         pdf_bytes = generar_pdf(chat_actual, st.session_state.sesion_actual)
         st.download_button(
@@ -1003,3 +1147,4 @@ elif st.session_state.show_login:
     pantalla_acceso()
 else:
     pantalla_invitado()
+ 
