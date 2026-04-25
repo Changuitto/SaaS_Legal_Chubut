@@ -536,14 +536,15 @@ def pantalla_acceso():
                                         st.session_state.reset_email = email_recupero.strip()
                                         st.rerun()
                                     except Exception as e:
-                                        st.error("Hubo un error. Verificá que el email esté bien escrito.")
+                                        st.error(f"Error técnico: {str(e)}")
                                 else:
                                     st.warning("Por favor, ingresá tu email.")
                                     
                     elif st.session_state.reset_estado == "codigo_enviado":
                         st.info(f"Revisá tu bandeja de entrada o Spam. Enviamos un código de seguridad a **{st.session_state.reset_email}**")
                         with st.form("form_nueva_clave", clear_on_submit=True):
-                            otp_code = st.text_input("Ingresá el código de 6 dígitos")
+                            # Le sacamos lo de "6 dígitos" para evitar confusión si Supabase envía 8
+                            otp_code = st.text_input("Ingresá el código de seguridad")
                             new_pass = st.text_input("Nueva contraseña", type="password")
                             new_pass_confirm = st.text_input("Confirmar nueva contraseña", type="password")
                             btn_cambiar = st.form_submit_button("Actualizar Contraseña", use_container_width=True)
@@ -563,15 +564,20 @@ def pantalla_acceso():
                                             "token": otp_code.strip(),
                                             "type": "recovery"
                                         })
-                                        # 2. Actualizamos la contraseña
-                                        supabase.auth.update_user({"password": new_pass})
                                         
-                                        st.success("¡Contraseña actualizada con éxito! Ya podés iniciar sesión arriba.")
-                                        st.session_state.reset_estado = "inicio"
-                                        st.session_state.reset_email = ""
-                                        supabase.auth.sign_out() # Cierra sesión fantasma
-                                    except Exception as e:
-                                        st.error("El código es incorrecto o expiró. Intentá nuevamente.")
+                                        # 2. Si el código es correcto, actualizamos la contraseña
+                                        try:
+                                            supabase.auth.update_user({"password": new_pass})
+                                            st.success("¡Contraseña actualizada con éxito! Ya podés iniciar sesión arriba.")
+                                            st.session_state.reset_estado = "inicio"
+                                            st.session_state.reset_email = ""
+                                            supabase.auth.sign_out() # Cierra sesión fantasma
+                                        except Exception as pw_error:
+                                            st.error(f"El código era correcto, pero falló la contraseña: {str(pw_error)}")
+                                            
+                                    except Exception as otp_error:
+                                        # Mostramos el error exacto que tira Supabase
+                                        st.error(f"No pudimos validar el código. Razón técnica: {str(otp_error)}")
                                         
                         if st.button("← Usar otro correo / Volver a intentar"):
                             st.session_state.reset_estado = "inicio"
