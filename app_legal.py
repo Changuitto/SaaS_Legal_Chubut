@@ -392,6 +392,10 @@ if "show_login" not in st.session_state: st.session_state.show_login = False
 if "guest_history" not in st.session_state: st.session_state.guest_history = []
 if "consultas_gastadas" not in st.session_state: st.session_state.consultas_gastadas = 0
 
+# VARIABLES DE ESTADO PARA RECUPERACIÓN DE CONTRASEÑA
+if "reset_estado" not in st.session_state: st.session_state.reset_estado = "inicio"
+if "reset_email" not in st.session_state: st.session_state.reset_email = ""
+
 galleta_invitado = mis_cookies.get("chubut_invitado")
 if galleta_invitado:
     st.session_state.consultas_gastadas = max(st.session_state.consultas_gastadas, int(galleta_invitado))
@@ -514,22 +518,65 @@ def pantalla_acceso():
                     else:
                         st.warning("Completá ambos campos.")
 
-                # --- NUEVO: BOTÓN DE RECUPERAR CONTRASEÑA ---
+                # --- NUEVO: FLUJO COMPLETO DE RECUPERAR CONTRASEÑA ---
                 st.write("")
-                with st.expander("¿Olvidaste tu contraseña?"):
-                    with st.form("form_recuperar", clear_on_submit=True):
-                        email_recupero = st.text_input("Ingresá tu email registrado")
-                        btn_recuperar = st.form_submit_button("Enviar enlace", use_container_width=True)
-                        
-                        if btn_recuperar:
-                            if email_recupero:
-                                try:
-                                    supabase.auth.reset_password_email(email_recupero.strip())
-                                    st.success("¡Enlace enviado! Revisá tu bandeja de entrada o Spam.")
-                                except Exception as e:
-                                    st.error("Hubo un error. Verificá que el email esté bien escrito.")
-                            else:
-                                st.warning("Por favor, ingresá tu email.")
+                # El expander se queda abierto si ya enviamos el código
+                with st.expander("¿Olvidaste tu contraseña?", expanded=(st.session_state.reset_estado == "codigo_enviado")):
+                    
+                    if st.session_state.reset_estado == "inicio":
+                        with st.form("form_recuperar", clear_on_submit=True):
+                            email_recupero = st.text_input("Ingresá tu email registrado")
+                            btn_recuperar = st.form_submit_button("Enviar código", use_container_width=True)
+                            
+                            if btn_recuperar:
+                                if email_recupero:
+                                    try:
+                                        supabase.auth.reset_password_email(email_recupero.strip())
+                                        st.session_state.reset_estado = "codigo_enviado"
+                                        st.session_state.reset_email = email_recupero.strip()
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error("Hubo un error. Verificá que el email esté bien escrito.")
+                                else:
+                                    st.warning("Por favor, ingresá tu email.")
+                                    
+                    elif st.session_state.reset_estado == "codigo_enviado":
+                        st.info(f"Revisá tu bandeja de entrada o Spam. Enviamos un código de seguridad a **{st.session_state.reset_email}**")
+                        with st.form("form_nueva_clave", clear_on_submit=True):
+                            otp_code = st.text_input("Ingresá el código de 6 dígitos")
+                            new_pass = st.text_input("Nueva contraseña", type="password")
+                            new_pass_confirm = st.text_input("Confirmar nueva contraseña", type="password")
+                            btn_cambiar = st.form_submit_button("Actualizar Contraseña", use_container_width=True)
+                            
+                            if btn_cambiar:
+                                if not otp_code or not new_pass or not new_pass_confirm:
+                                    st.warning("Completá todos los campos.")
+                                elif new_pass != new_pass_confirm:
+                                    st.error("Las contraseñas no coinciden.")
+                                elif len(new_pass) < 6:
+                                    st.error("La contraseña debe tener al menos 6 caracteres.")
+                                else:
+                                    try:
+                                        # 1. Validamos el código OTP
+                                        supabase.auth.verify_otp({
+                                            "email": st.session_state.reset_email,
+                                            "token": otp_code.strip(),
+                                            "type": "recovery"
+                                        })
+                                        # 2. Actualizamos la contraseña
+                                        supabase.auth.update_user({"password": new_pass})
+                                        
+                                        st.success("¡Contraseña actualizada con éxito! Ya podés iniciar sesión arriba.")
+                                        st.session_state.reset_estado = "inicio"
+                                        st.session_state.reset_email = ""
+                                        supabase.auth.sign_out() # Cierra sesión fantasma
+                                    except Exception as e:
+                                        st.error("El código es incorrecto o expiró. Intentá nuevamente.")
+                                        
+                        if st.button("← Usar otro correo / Volver a intentar"):
+                            st.session_state.reset_estado = "inicio"
+                            st.session_state.reset_email = ""
+                            st.rerun()
                 # --------------------------------------------
 
             if st.session_state.get("login_exitoso"):
