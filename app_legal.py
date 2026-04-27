@@ -832,7 +832,15 @@ def pantalla_invitado():
     if st.session_state.guest_history and st.session_state.guest_history[-1]["role"] == "user":
         with st.chat_message("assistant"):
             with st.spinner("Analizando jurisprudencia..."):
-                docs = vdb.similarity_search(st.session_state.guest_history[-1]["content"], k=6)
+                
+                # --- NUEVO: OPTIMIZADOR DE BÚSQUEDA (TRADUCTOR LEGAL) ---
+                prompt_opt = f"Actúa como un abogado. Reescribe esta consulta legal de un cliente usando sinónimos, términos jurídicos equivalentes y palabras clave amplias para encontrar sentencias en una base de datos. Solo devuelve el texto optimizado para la búsqueda, sin saludos ni explicaciones: '{st.session_state.guest_history[-1]['content']}'"
+                consulta_optimizada = llm.invoke([HumanMessage(content=prompt_opt)]).content
+                
+                # Buscamos con la consulta optimizada y traemos 10 fallos (k=10)
+                docs = vdb.similarity_search(consulta_optimizada, k=10)
+                # --------------------------------------------------------
+
                 contexto_final = "\n\n".join([f"📅 FECHA: {d.metadata.get('fecha_completa')}\n🔗 URL: {d.metadata.get('link_pdf')}\n📄 CONTENIDO:\n{d.page_content}" for d in docs])
                 
                 mensajes = [SystemMessage(content=generar_instruccion_ia(contexto_final))]
@@ -1193,7 +1201,15 @@ def pantalla_chat():
         if chat_actual and chat_actual[-1]["role"] == "user":
             with st.chat_message("assistant"):
                 with st.spinner("Analizando jurisprudencia..."):
-                    docs = vdb.similarity_search(chat_actual[-1]["content"], k=6)
+                    
+                    # --- NUEVO: OPTIMIZADOR DE BÚSQUEDA (TRADUCTOR LEGAL) ---
+                    prompt_opt = f"Actúa como un abogado. Reescribe esta consulta legal de un cliente usando sinónimos, términos jurídicos equivalentes y palabras clave amplias para encontrar sentencias en una base de datos. Solo devuelve el texto optimizado para la búsqueda, sin saludos ni explicaciones: '{chat_actual[-1]['content']}'"
+                    consulta_optimizada = llm.invoke([HumanMessage(content=prompt_opt)]).content
+                    
+                    # Buscamos con la consulta optimizada y traemos 10 fallos (k=10)
+                    docs = vdb.similarity_search(consulta_optimizada, k=10)
+                    # --------------------------------------------------------
+
                     contexto_final = "\n\n".join([f"📅 FECHA: {d.metadata.get('fecha_completa')}\n🔗 URL: {d.metadata.get('link_pdf')}\n📄 CONTENIDO:\n{d.page_content}" for d in docs])
                     
                     mensajes = [SystemMessage(content=generar_instruccion_ia(contexto_final))]
